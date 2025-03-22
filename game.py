@@ -28,6 +28,7 @@ end_x, end_y = GRID_SIZE - 1, GRID_SIZE - 1
 walls = set()
 player_turns = 0
 player_skill_active = False
+game_won = False  # Flag to track if the player has won
 
 # Skill button rects
 def update_button_positions():
@@ -55,17 +56,32 @@ def draw_buttons():
     screen.blit(font.render("Skill 4", True, WHITE), (skill_4_button.x + 10, skill_4_button.y + 5))
 
 def reset_game():
-    global player_x, player_y, walls, player_turns, player_skill_active
+    global player_x, player_y, walls, player_turns, player_skill_active, game_won
     player_x, player_y = 0, 0
     walls.clear()
     player_turns = 0
     player_skill_active = False
+    game_won = False  # Reset win state
 
 running = True
 while running:
     screen.fill(OFF_WHITE)
+
+    # Check if the player has reached the goal
+    if player_x == end_x and player_y == end_y:
+        game_won = True
     
-    turn_text = "Player's Turn" if player_turns < 4 else "Maze Master's Turn"
+    if game_won:
+        turn_text = "Congratulations!"
+        screen.blit(font.render(turn_text, True, BLUE), (SCREEN_WIDTH // 2 - 50, 15))
+        pygame.display.flip()
+        pygame.time.delay(2000)  # Display message for 2 seconds
+        reset_game()
+        continue  # Restart the loop after resetting
+
+    else:
+        turn_text = "Player's Turn" if player_turns < 4 else "Maze Master's Turn"
+    
     text_surface = font.render(turn_text, True, BLUE)
     screen.blit(text_surface, (SCREEN_WIDTH // 2 - text_surface.get_width() // 2, 15))
     draw_buttons()
