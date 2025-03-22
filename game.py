@@ -115,8 +115,8 @@ while running:
                 player_skill_active = True  # Activate Skill 1
                 continue
 
-            # Skill 2 activation (Only if not used yet)
-            if skill_2_button.collidepoint(mx, my) and not skill_2_used:
+            # Skill 2 activation (Only available to Player, not Maze Master)
+            if skill_2_button.collidepoint(mx, my) and not skill_2_used and player_turns < 4:
                 skill_2_active = True  # Activate teleport mode
                 continue
             
