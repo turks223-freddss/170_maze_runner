@@ -48,7 +48,11 @@ update_button_positions()
 
 def draw_buttons():
     pygame.draw.rect(screen, BLUE, skill_1_button)
-    pygame.draw.rect(screen, BLUE, skill_2_button)
+    
+    # Skill 2 should be green only if used AND it's still the player's turn
+    skill_2_color = GREEN if skill_2_used and player_turns < 4 else BLUE
+    pygame.draw.rect(screen, skill_2_color, skill_2_button)
+
     pygame.draw.rect(screen, BLUE, skill_3_button)
     pygame.draw.rect(screen, BLUE, skill_4_button)
     
