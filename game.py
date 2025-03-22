@@ -8,20 +8,19 @@ SCREEN_HEIGHT = GRID_SIZE * TILE_SIZE + 50
 
 # Colors
 WHITE = (255, 255, 255)
+OFF_WHITE = (245, 245, 220)
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 GRAY = (169, 169, 169)
 BLUE = (0, 0, 255)
-OVERLAY_BG = (0, 0, 0, 180)
 
 # Initialize Pygame
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Turn-Based Maze Game")
 clock = pygame.time.Clock()
-font = pygame.font.Font(None, 36)
-large_font = pygame.font.Font(None, 72)
+font = pygame.font.Font(None, 30)
 
 # Player start position
 player_x, player_y = 0, 0
@@ -31,10 +30,18 @@ player_turns = 0
 player_skill_active = False
 
 # Skill button rects
-skill_1_button = pygame.Rect(20, 10, 100, 30)
-skill_2_button = pygame.Rect(130, 10, 100, 30)
-skill_3_button = pygame.Rect(SCREEN_WIDTH - 230, 10, 100, 30)
-skill_4_button = pygame.Rect(SCREEN_WIDTH - 120, 10, 100, 30)
+def update_button_positions():
+    global skill_1_button, skill_2_button, skill_3_button, skill_4_button
+    button_width = 80
+    button_height = 25
+    spacing = 10
+
+    skill_1_button = pygame.Rect(spacing, 10, button_width, button_height)
+    skill_2_button = pygame.Rect(spacing + button_width + spacing, 10, button_width, button_height)
+    skill_3_button = pygame.Rect(SCREEN_WIDTH - (2 * (button_width + spacing)), 10, button_width, button_height)
+    skill_4_button = pygame.Rect(SCREEN_WIDTH - (button_width + spacing), 10, button_width, button_height)
+
+update_button_positions()
 
 def draw_buttons():
     pygame.draw.rect(screen, BLUE, skill_1_button)
@@ -42,10 +49,10 @@ def draw_buttons():
     pygame.draw.rect(screen, BLUE, skill_3_button)
     pygame.draw.rect(screen, BLUE, skill_4_button)
     
-    screen.blit(font.render("Skill 1", True, WHITE), (30, 15))
-    screen.blit(font.render("Skill 2", True, WHITE), (140, 15))
-    screen.blit(font.render("Skill 3", True, WHITE), (SCREEN_WIDTH - 220, 15))
-    screen.blit(font.render("Skill 4", True, WHITE), (SCREEN_WIDTH - 110, 15))
+    screen.blit(font.render("Skill 1", True, WHITE), (skill_1_button.x + 10, skill_1_button.y + 5))
+    screen.blit(font.render("Skill 2", True, WHITE), (skill_2_button.x + 10, skill_2_button.y + 5))
+    screen.blit(font.render("Skill 3", True, WHITE), (skill_3_button.x + 10, skill_3_button.y + 5))
+    screen.blit(font.render("Skill 4", True, WHITE), (skill_4_button.x + 10, skill_4_button.y + 5))
 
 def reset_game():
     global player_x, player_y, walls, player_turns, player_skill_active
@@ -56,11 +63,11 @@ def reset_game():
 
 running = True
 while running:
-    screen.fill(WHITE)
+    screen.fill(OFF_WHITE)
     
     turn_text = "Player's Turn" if player_turns < 4 else "Maze Master's Turn"
     text_surface = font.render(turn_text, True, BLUE)
-    screen.blit(text_surface, (SCREEN_WIDTH // 2 - text_surface.get_width() // 2, 10))
+    screen.blit(text_surface, (SCREEN_WIDTH // 2 - text_surface.get_width() // 2, 15))
     draw_buttons()
     
     for x in range(0, SCREEN_WIDTH, TILE_SIZE):
@@ -76,6 +83,10 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        elif event.type == pygame.VIDEORESIZE:
+            SCREEN_WIDTH, SCREEN_HEIGHT = event.w, event.h
+            screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
+            update_button_positions()
         elif event.type == pygame.MOUSEBUTTONDOWN:
             mx, my = pygame.mouse.get_pos()
             
