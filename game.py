@@ -28,6 +28,8 @@ end_x, end_y = GRID_SIZE - 1, GRID_SIZE - 1
 walls = set()
 player_turns = 0
 player_skill_active = False
+skill_2_active = False  # Skill 2 activation flag
+skill_2_used = False  # Track if skill 2 has been used
 game_won = False  # Flag to track if the player has won
 
 # Skill button rects
@@ -56,11 +58,13 @@ def draw_buttons():
     screen.blit(font.render("Skill 4", True, WHITE), (skill_4_button.x + 10, skill_4_button.y + 5))
 
 def reset_game():
-    global player_x, player_y, walls, player_turns, player_skill_active, game_won
+    global player_x, player_y, walls, player_turns, player_skill_active, skill_2_active, skill_2_used, game_won
     player_x, player_y = 0, 0
     walls.clear()
     player_turns = 0
     player_skill_active = False
+    skill_2_active = False
+    skill_2_used = False  # Reset skill usage
     game_won = False  # Reset win state
 
 running = True
@@ -106,15 +110,29 @@ while running:
         elif event.type == pygame.MOUSEBUTTONDOWN:
             mx, my = pygame.mouse.get_pos()
             
+            # Skill 1 activation
             if skill_1_button.collidepoint(mx, my) and player_turns < 4:
                 player_skill_active = True  # Activate Skill 1
+                continue
+
+            # Skill 2 activation (Only if not used yet)
+            if skill_2_button.collidepoint(mx, my) and not skill_2_used:
+                skill_2_active = True  # Activate teleport mode
                 continue
             
             if my < 50:
                 continue
-            
+
             clicked_x = mx // TILE_SIZE
             clicked_y = (my - 50) // TILE_SIZE
+            
+            # If Skill 2 is active, allow teleporting within 3x3 area
+            if skill_2_active:
+                if abs(clicked_x - player_x) <= 2 and abs(clicked_y - player_y) <= 2 and (clicked_x, clicked_y) not in walls:
+                    player_x, player_y = clicked_x, clicked_y
+                    skill_2_active = False  # Deactivate teleport mode
+                    skill_2_used = True  # Mark skill as used
+                continue
             
             if player_turns < 4:
                 max_move = 4 if player_skill_active else 1
