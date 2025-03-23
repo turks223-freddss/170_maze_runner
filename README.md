@@ -12,7 +12,6 @@ The **Turn-Based Maze Game** is a strategic puzzle game where players navigate a
 - The game ends when the player reaches the goal or becomes trapped.
 
 ## Controls
-- **Arrow Keys**: Move the player within allowed tiles.
 - **Mouse Clicks**: Interact with skill buttons and place walls.
 
 ## Skills
