@@ -17,8 +17,7 @@
 ## Skills
 1. **Extended Move**: Increases movement range for one turn.
 2. **Teleport**: Allows the runner to jump to a distant tile once per game.
-3. **Skill 3 (Future Implementation)**
-4. **Skill 4 (Future Implementation)**
+3. **Wall Break**: Allows the runner to break a wall tile.
 
 ## Game Elements
 - **Walls**: Can be placed to create barriers and strategic advantages.

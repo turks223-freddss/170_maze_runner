@@ -19,6 +19,7 @@ LIGHT_BLUE = (173, 216, 230)
 YELLOW = (255, 255, 0, 160)  # Semi-transparent yellow for highlights
 LIGHT_ORANGE = (255, 200, 0, 100)  # Light orange for valid wall placements
 ACTIVE_SKILL_COLOR = (50, 200, 50)  # Bright green for active skills
+WALL_BREAK_COLOR = (255, 100, 0)  # Orange for wall break skill
 
 # Initialize Pygame
 pygame.init()
@@ -36,7 +37,14 @@ player_turns = 0
 player_skill_active = False
 skill_2_active = False  # Skill 2 activation flag
 skill_2_used = False  # Track if skill 2 has been used
+skill_3_active = False  # Skill 3 (wall break) activation flag
+skill_3_used = False  # Track if skill 3 has been used
+skill_3_available = False  # Track if skill 3 is available
 game_won = False  # Flag to track if the player has won
+
+# Track game progress for skill 3 availability
+total_player_steps = 0
+rounds_since_last_skill3 = 0  # Track moves since last skill 3 availability
 
 # Animation variables for turn text
 animation_time = 0
@@ -73,8 +81,17 @@ def draw_buttons():
     else:
         skill_2_color = BLUE
     pygame.draw.rect(screen, skill_2_color, skill_2_button)
-
-    pygame.draw.rect(screen, BLUE, skill_3_button)
+    
+    # Skill 3 button (Wall Break)
+    # Orange if active, gray if not available or used up, blue if available
+    if skill_3_active:
+        skill_3_color = WALL_BREAK_COLOR
+    elif not skill_3_available or skill_3_used:
+        skill_3_color = GRAY
+    else:
+        skill_3_color = BLUE
+    pygame.draw.rect(screen, skill_3_color, skill_3_button)
+    
     pygame.draw.rect(screen, BLUE, skill_4_button)
     
     # Draw button labels
@@ -93,6 +110,17 @@ def draw_buttons():
         skill_text = small_font.render("ACTIVE", True, WHITE)
         text_x = skill_2_button.x + (skill_2_button.width - skill_text.get_width()) // 2
         screen.blit(skill_text, (text_x, skill_2_button.y + skill_2_button.height + 2))
+        
+    if skill_3_active:
+        skill_text = small_font.render("ACTIVE", True, WHITE)
+        text_x = skill_3_button.x + (skill_3_button.width - skill_text.get_width()) // 2
+        screen.blit(skill_text, (text_x, skill_3_button.y + skill_3_button.height + 2))
+        
+    # Show "Unlocked" indicator for skill 3 when it becomes available
+    if skill_3_available and not skill_3_used and not skill_3_active:
+        unlock_text = small_font.render("UNLOCKED", True, WALL_BREAK_COLOR)
+        text_x = skill_3_button.x + (skill_3_button.width - unlock_text.get_width()) // 2
+        screen.blit(unlock_text, (text_x, skill_3_button.y + skill_3_button.height + 2))
 
 def draw_turn_text():
     # Determine the current turn
@@ -112,14 +140,19 @@ def draw_turn_text():
     screen.blit(base_text, (x_pos, y_pos))
     
     # Add active skill info
-    if player_skill_active or skill_2_active:
+    if player_skill_active or skill_2_active or skill_3_active:
         active_skill = ""
+        active_color = ACTIVE_SKILL_COLOR
+        
         if player_skill_active:
             active_skill = "Extended Move"
         elif skill_2_active:
             active_skill = "Teleport"
+        elif skill_3_active:
+            active_skill = "Wall Break"
+            active_color = WALL_BREAK_COLOR
             
-        skill_info = small_font.render(f"{active_skill} Active", True, ACTIVE_SKILL_COLOR)
+        skill_info = small_font.render(f"{active_skill} Active", True, active_color)
         x_pos = SCREEN_WIDTH // 2 - skill_info.get_width() // 2
         screen.blit(skill_info, (x_pos, y_pos + 20))
 
@@ -214,22 +247,29 @@ def highlight_clickable_areas():
     
     # Player's turn
     if player_turns < 4:
-        # Determine movement range based on skill
-        max_move = 4 if player_skill_active else 1
-        max_teleport = 2 if skill_2_active else 0
-        
-        # Get valid moves
-        if skill_2_active:
-            valid_tiles = get_valid_moves(player_x, player_y, max_teleport)
-            highlight_color = (255, 255, 0, 100)  # Yellow for teleport
+        # Check if wall break skill is active
+        if skill_3_active:
+            # Highlight all wall pieces that can be broken
+            for wx, wy in walls:
+                pygame.draw.rect(highlight_surface, (255, 100, 0, 100), 
+                               (wx * TILE_SIZE, wy * TILE_SIZE + 50, TILE_SIZE, TILE_SIZE))
         else:
-            valid_tiles = get_valid_moves(player_x, player_y, max_move)
-            highlight_color = (0, 255, 0, 100)  # Green for normal movement
+            # Determine movement range based on skill
+            max_move = 4 if player_skill_active else 1
+            max_teleport = 2 if skill_2_active else 0
             
-        # Draw highlights for valid moves
-        for tx, ty in valid_tiles:
-            pygame.draw.rect(highlight_surface, highlight_color, 
-                           (tx * TILE_SIZE, ty * TILE_SIZE + 50, TILE_SIZE, TILE_SIZE))
+            # Get valid moves
+            if skill_2_active:
+                valid_tiles = get_valid_moves(player_x, player_y, max_teleport)
+                highlight_color = (255, 255, 0, 100)  # Yellow for teleport
+            else:
+                valid_tiles = get_valid_moves(player_x, player_y, max_move)
+                highlight_color = (0, 255, 0, 100)  # Green for normal movement
+                
+            # Draw highlights for valid moves
+            for tx, ty in valid_tiles:
+                pygame.draw.rect(highlight_surface, highlight_color, 
+                               (tx * TILE_SIZE, ty * TILE_SIZE + 50, TILE_SIZE, TILE_SIZE))
     
     # Maze Master's turn
     else:
@@ -268,14 +308,21 @@ def draw_skill_info():
     """Draw skill info based on what's active"""
     if player_turns < 4:  # Only show during player's turn
         info_text = ""
+        info_color = WHITE
+        
         if player_skill_active:
             info_text = "Skill 1: Extended Move (4 tiles)"
+            info_color = WHITE
         elif skill_2_active:
             info_text = "Skill 2: Teleport (within 2 tiles)"
+            info_color = WHITE
+        elif skill_3_active:
+            info_text = "Skill 3: Wall Break (click a wall to break it)"
+            info_color = WALL_BREAK_COLOR
         
         if info_text:
             # Render text first to determine the width dynamically
-            skill_info = font.render(info_text, True, WHITE)
+            skill_info = font.render(info_text, True, info_color)
             text_width, text_height = skill_info.get_size()
             padding = 10  # Add some padding around the text
             
@@ -294,10 +341,31 @@ def draw_skill_info():
             text_x = x_pos + padding
             text_y = y_pos + padding
             screen.blit(skill_info, (text_x, text_y))
+        
+        # Check if skill 3 just became available
+        elif skill_3_available and not skill_3_used and not skill_3_active:
+            unlock_text = "Skill 3 (Wall Break) is now available!"
+            unlock_info = font.render(unlock_text, True, WALL_BREAK_COLOR)
+            text_width, text_height = unlock_info.get_size()
+            padding = 10
+            
+            bg_width = text_width + 2 * padding
+            bg_height = text_height + 2 * padding
+            info_surface = pygame.Surface((bg_width, bg_height), pygame.SRCALPHA)
+            info_surface.fill((0, 0, 0, 200))
+            
+            x_pos = (SCREEN_WIDTH - bg_width) // 2
+            y_pos = SCREEN_HEIGHT - 40
+            screen.blit(info_surface, (x_pos, y_pos))
+            
+            text_x = x_pos + padding
+            text_y = y_pos + padding
+            screen.blit(unlock_info, (text_x, text_y))
 
 def reset_game():
     global player_x, player_y, walls, player_turns, player_skill_active, skill_2_active, skill_2_used, game_won
-    global show_turn_notification, turn_notification_timer
+    global show_turn_notification, turn_notification_timer, skill_3_active, skill_3_used, skill_3_available
+    global total_player_steps, rounds_since_last_skill3
     
     player_x, player_y = 0, 0
     walls.clear()
@@ -305,7 +373,12 @@ def reset_game():
     player_skill_active = False
     skill_2_active = False
     skill_2_used = False  # Reset skill usage
+    skill_3_active = False  # Reset wall break skill
+    skill_3_used = False  # Reset wall break usage
+    skill_3_available = False  # Reset wall break availability
     game_won = False  # Reset win state
+    total_player_steps = 0
+    rounds_since_last_skill3 = 0
     
     # Show turn notification after reset
     show_turn_notification = True
@@ -330,6 +403,12 @@ while running:
     if player_x == end_x and player_y == end_y:
         game_won = True
     
+    # Check if Skill 3 should become available (after 4 moves total and every 4 moves thereafter)
+    if rounds_since_last_skill3 >= 4 and (skill_3_used or not skill_3_available):
+        skill_3_available = True
+        skill_3_used = False
+        rounds_since_last_skill3 = 0
+
     if game_won:
         draw_turn_text()  # Show "Congratulations!"
         pygame.display.flip()
@@ -384,17 +463,28 @@ while running:
             # Skill 1 activation
             if skill_1_button.collidepoint(mx, my) and player_turns < 4:
                 player_skill_active = not player_skill_active  # Toggle Skill 1
-                # Deactivate skill 2 if skill 1 is activated
+                # Deactivate other skills if skill 1 is activated
                 if player_skill_active:
                     skill_2_active = False
+                    skill_3_active = False
                 continue
 
             # Skill 2 activation (Only available to Player, not Maze Master)
             if skill_2_button.collidepoint(mx, my) and not skill_2_used and player_turns < 4:
                 skill_2_active = not skill_2_active  # Toggle teleport mode
-                # Deactivate skill 1 if skill 2 is activated
+                # Deactivate other skills if skill 2 is activated
                 if skill_2_active:
                     player_skill_active = False
+                    skill_3_active = False
+                continue
+                
+            # Skill 3 activation (Wall Break)
+            if skill_3_button.collidepoint(mx, my) and skill_3_available and not skill_3_used and player_turns < 4:
+                skill_3_active = not skill_3_active  # Toggle wall break mode
+                # Deactivate other skills if skill 3 is activated
+                if skill_3_active:
+                    player_skill_active = False
+                    skill_2_active = False
                 continue
             
             if my < 50:
@@ -403,13 +493,23 @@ while running:
             clicked_x = mx // TILE_SIZE
             clicked_y = (my - 50) // TILE_SIZE
             
-            # If Skill 2 is active, allow teleporting within 3x3 area
+            # Wall break skill logic
+            if skill_3_active and (clicked_x, clicked_y) in walls:
+                walls.remove((clicked_x, clicked_y))  # Remove the clicked wall
+                skill_3_active = False  # Deactivate wall break mode
+                skill_3_used = True  # Mark skill as used
+                player_turns += 1  # Use a turn after breaking a wall
+                total_player_steps += 1  # Increment total steps
+                continue
+            
+            # If Skill 2 is active, allow teleporting within 2x2 area
             if skill_2_active:
                 if abs(clicked_x - player_x) <= 2 and abs(clicked_y - player_y) <= 2 and (clicked_x, clicked_y) not in walls:
                     player_x, player_y = clicked_x, clicked_y
                     skill_2_active = False  # Deactivate teleport mode
                     skill_2_used = True  # Mark skill as used
                     player_turns += 1  # Use a turn after teleporting
+                    total_player_steps += 1  # Increment total steps
                 continue
             
             if player_turns < 4:
@@ -418,6 +518,7 @@ while running:
                 if (abs(clicked_x - player_x) + abs(clicked_y - player_y) <= max_move) and (clicked_x, clicked_y) not in walls:
                     player_x, player_y = clicked_x, clicked_y
                     player_turns += 1
+                    total_player_steps += 1  # Increment total steps
                     player_skill_active = False  # Deactivate skill after use
             else:
                 if (clicked_x, clicked_y) != (player_x, player_y) and (clicked_x, clicked_y) != (end_x, end_y):
@@ -434,6 +535,7 @@ while running:
                         # Show turn notification when Maze Master completes their turn
                         show_turn_notification = True
                         turn_notification_timer = 0
+                        rounds_since_last_skill3 += 1
     
     pygame.display.flip()
     clock.tick(60)
