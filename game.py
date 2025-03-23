@@ -15,6 +15,10 @@ GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 GRAY = (169, 169, 169)
 BLUE = (0, 0, 255)
+LIGHT_BLUE = (173, 216, 230)
+YELLOW = (255, 255, 0, 160)  # Semi-transparent yellow for highlights
+LIGHT_ORANGE = (255, 200, 0, 100)  # Light orange for valid wall placements
+ACTIVE_SKILL_COLOR = (50, 200, 50)  # Bright green for active skills
 
 # Initialize Pygame
 pygame.init()
@@ -22,6 +26,7 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Turn-Based Maze Game")
 clock = pygame.time.Clock()
 font = pygame.font.Font(None, 30)
+small_font = pygame.font.Font(None, 20)
 
 # Player start position
 player_x, player_y = 0, 0
@@ -55,19 +60,39 @@ def update_button_positions():
 update_button_positions()
 
 def draw_buttons():
-    pygame.draw.rect(screen, BLUE, skill_1_button)
+    # Skill 1 button (Extended Move) - Change color when active
+    skill_1_color = ACTIVE_SKILL_COLOR if player_skill_active else BLUE
+    pygame.draw.rect(screen, skill_1_color, skill_1_button)
     
-    # Skill 2 should be green only if used AND it's still the player's turn
-    skill_2_color = GREEN if skill_2_used and player_turns < 4 else BLUE
+    # Skill 2 button (Teleport)
+    # Green if active, gray if used up, blue if available
+    if skill_2_active:
+        skill_2_color = ACTIVE_SKILL_COLOR
+    elif skill_2_used:
+        skill_2_color = GRAY
+    else:
+        skill_2_color = BLUE
     pygame.draw.rect(screen, skill_2_color, skill_2_button)
 
     pygame.draw.rect(screen, BLUE, skill_3_button)
     pygame.draw.rect(screen, BLUE, skill_4_button)
     
+    # Draw button labels
     screen.blit(font.render("Skill 1", True, WHITE), (skill_1_button.x + 10, skill_1_button.y + 5))
     screen.blit(font.render("Skill 2", True, WHITE), (skill_2_button.x + 10, skill_2_button.y + 5))
     screen.blit(font.render("Skill 3", True, WHITE), (skill_3_button.x + 10, skill_3_button.y + 5))
     screen.blit(font.render("Skill 4", True, WHITE), (skill_4_button.x + 10, skill_4_button.y + 5))
+    
+    # Draw active skill indicators
+    if player_skill_active:
+        skill_text = small_font.render("ACTIVE", True, WHITE)
+        text_x = skill_1_button.x + (skill_1_button.width - skill_text.get_width()) // 2
+        screen.blit(skill_text, (text_x, skill_1_button.y + skill_1_button.height + 2))
+    
+    if skill_2_active:
+        skill_text = small_font.render("ACTIVE", True, WHITE)
+        text_x = skill_2_button.x + (skill_2_button.width - skill_text.get_width()) // 2
+        screen.blit(skill_text, (text_x, skill_2_button.y + skill_2_button.height + 2))
 
 def draw_turn_text():
     # Determine the current turn
@@ -85,7 +110,18 @@ def draw_turn_text():
 
     # Draw the text
     screen.blit(base_text, (x_pos, y_pos))
-
+    
+    # Add active skill info
+    if player_skill_active or skill_2_active:
+        active_skill = ""
+        if player_skill_active:
+            active_skill = "Extended Move"
+        elif skill_2_active:
+            active_skill = "Teleport"
+            
+        skill_info = small_font.render(f"{active_skill} Active", True, ACTIVE_SKILL_COLOR)
+        x_pos = SCREEN_WIDTH // 2 - skill_info.get_width() // 2
+        screen.blit(skill_info, (x_pos, y_pos + 20))
 
 def show_turn_change_notification():
     global show_turn_notification, turn_notification_timer
@@ -131,6 +167,134 @@ def show_turn_change_notification():
         show_turn_notification = False
         turn_notification_timer = 0
 
+def get_valid_moves(x, y, max_distance):
+    """Get all valid moves from current position within max_distance."""
+    valid_tiles = []
+    
+    # For skill 2 (teleport), use a square area
+    if skill_2_active:
+        for dx in range(-max_distance, max_distance + 1):
+            for dy in range(-max_distance, max_distance + 1):
+                new_x, new_y = x + dx, y + dy
+                if (0 <= new_x < GRID_SIZE and 0 <= new_y < GRID_SIZE and 
+                    (new_x, new_y) not in walls and (new_x, new_y) != (x, y)):
+                    valid_tiles.append((new_x, new_y))
+    # For normal movement or skill 1, use Manhattan distance
+    else:
+        for dx in range(-max_distance, max_distance + 1):
+            for dy in range(-max_distance, max_distance + 1):
+                if abs(dx) + abs(dy) <= max_distance and (dx != 0 or dy != 0):
+                    new_x, new_y = x + dx, y + dy
+                    if (0 <= new_x < GRID_SIZE and 0 <= new_y < GRID_SIZE and 
+                        (new_x, new_y) not in walls):
+                        valid_tiles.append((new_x, new_y))
+    
+    return valid_tiles
+
+def is_valid_wall_position(x, y, is_horizontal):
+    """Check if a wall can be placed at a specific position."""
+    if is_horizontal:
+        wall_positions = [(x + i, y) for i in range(3)]
+    else:
+        wall_positions = [(x, y + i) for i in range(3)]
+    
+    # Check if all positions are valid
+    valid = all(0 <= wx < GRID_SIZE and 0 <= wy < GRID_SIZE and 
+               (wx, wy) != (player_x, player_y) and 
+               (wx, wy) != (end_x, end_y) and
+               (wx, wy) not in walls
+               for wx, wy in wall_positions)
+    
+    return valid
+
+def highlight_clickable_areas():
+    """Highlight all valid moves or wall placements based on current game state."""
+    # Create semi-transparent surface for highlights
+    highlight_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+    
+    # Player's turn
+    if player_turns < 4:
+        # Determine movement range based on skill
+        max_move = 4 if player_skill_active else 1
+        max_teleport = 2 if skill_2_active else 0
+        
+        # Get valid moves
+        if skill_2_active:
+            valid_tiles = get_valid_moves(player_x, player_y, max_teleport)
+            highlight_color = (255, 255, 0, 100)  # Yellow for teleport
+        else:
+            valid_tiles = get_valid_moves(player_x, player_y, max_move)
+            highlight_color = (0, 255, 0, 100)  # Green for normal movement
+            
+        # Draw highlights for valid moves
+        for tx, ty in valid_tiles:
+            pygame.draw.rect(highlight_surface, highlight_color, 
+                           (tx * TILE_SIZE, ty * TILE_SIZE + 50, TILE_SIZE, TILE_SIZE))
+    
+    # Maze Master's turn
+    else:
+        # Check if shift is pressed for vertical walls
+        is_horizontal = not pygame.key.get_pressed()[pygame.K_LSHIFT]
+        
+        # Highlight all grid positions
+        for x in range(GRID_SIZE):
+            for y in range(GRID_SIZE):
+                # Skip player and goal positions
+                if (x, y) == (player_x, player_y) or (x, y) == (end_x, end_y) or (x, y) in walls:
+                    continue
+                
+                # Check if this is a starting point for a valid wall placement
+                if is_valid_wall_position(x, y, is_horizontal):
+                    # Draw valid wall positions in light orange
+                    if is_horizontal:
+                        wall_positions = [(x + i, y) for i in range(3)]
+                    else:
+                        wall_positions = [(x, y + i) for i in range(3)]
+                    
+                    for wx, wy in wall_positions:
+                        pygame.draw.rect(highlight_surface, LIGHT_ORANGE, 
+                                       (wx * TILE_SIZE, wy * TILE_SIZE + 50, TILE_SIZE, TILE_SIZE))
+                else:
+                    # Draw invalid positions in semi-transparent red
+                    # Only if it would be the start of a wall
+                    if (is_horizontal and x + 2 < GRID_SIZE) or (not is_horizontal and y + 2 < GRID_SIZE):
+                        pygame.draw.rect(highlight_surface, (255, 0, 0, 80), 
+                                       (x * TILE_SIZE, y * TILE_SIZE + 50, TILE_SIZE, TILE_SIZE))
+    
+    # Draw the highlight surface
+    screen.blit(highlight_surface, (0, 0))
+
+def draw_skill_info():
+    """Draw skill info based on what's active"""
+    if player_turns < 4:  # Only show during player's turn
+        info_text = ""
+        if player_skill_active:
+            info_text = "Skill 1: Extended Move (4 tiles)"
+        elif skill_2_active:
+            info_text = "Skill 2: Teleport (within 2 tiles)"
+        
+        if info_text:
+            # Render text first to determine the width dynamically
+            skill_info = font.render(info_text, True, WHITE)
+            text_width, text_height = skill_info.get_size()
+            padding = 10  # Add some padding around the text
+            
+            # Create background surface based on text size
+            bg_width = text_width + 2 * padding
+            bg_height = text_height + 2 * padding
+            info_surface = pygame.Surface((bg_width, bg_height), pygame.SRCALPHA)
+            info_surface.fill((0, 0, 0, 200))  # Less transparent background
+            
+            # Compute positions
+            x_pos = (SCREEN_WIDTH - bg_width) // 2  # Center the background
+            y_pos = SCREEN_HEIGHT - 40
+            screen.blit(info_surface, (x_pos, y_pos))
+            
+            # Draw text centered within the background
+            text_x = x_pos + padding
+            text_y = y_pos + padding
+            screen.blit(skill_info, (text_x, text_y))
+
 def reset_game():
     global player_x, player_y, walls, player_turns, player_skill_active, skill_2_active, skill_2_used, game_won
     global show_turn_notification, turn_notification_timer
@@ -150,11 +314,17 @@ def reset_game():
 # Show turn notification at game start
 show_turn_notification = True
 
+# Mouse tracking for hover effects
+mouse_x, mouse_y = 0, 0
+
 # Game loop
 running = True
 last_turn_state = player_turns < 4  # Track turn state to detect changes
 while running:
     screen.fill(OFF_WHITE)
+
+    # Update mouse position for hover effects
+    mouse_x, mouse_y = pygame.mouse.get_pos()
 
     # Check if the player has reached the goal
     if player_x == end_x and player_y == end_y:
@@ -167,10 +337,6 @@ while running:
         reset_game()
         continue  # Restart the loop after resetting
 
-    # Draw turn text and buttons
-    draw_turn_text()
-    draw_buttons()
-    
     # Draw the grid
     for x in range(0, SCREEN_WIDTH, TILE_SIZE):
         for y in range(50, SCREEN_HEIGHT, TILE_SIZE):
@@ -180,9 +346,19 @@ while running:
     for wx, wy in walls:
         pygame.draw.rect(screen, GRAY, (wx * TILE_SIZE, wy * TILE_SIZE + 50, TILE_SIZE, TILE_SIZE))
     
-    # Draw player and end positions
+    # Highlight valid moves
+    highlight_clickable_areas()
+    
+    # Draw player and end positions (on top of highlights)
     pygame.draw.rect(screen, GREEN, (player_x * TILE_SIZE, player_y * TILE_SIZE + 50, TILE_SIZE, TILE_SIZE))
     pygame.draw.rect(screen, RED, (end_x * TILE_SIZE, end_y * TILE_SIZE + 50, TILE_SIZE, TILE_SIZE))
+    
+    # Draw turn text and buttons
+    draw_turn_text()
+    draw_buttons()
+    
+    # Draw skill info at the bottom of the screen
+    draw_skill_info()
     
     # Check if turn state has changed
     current_turn_state = player_turns < 4
@@ -207,12 +383,18 @@ while running:
             
             # Skill 1 activation
             if skill_1_button.collidepoint(mx, my) and player_turns < 4:
-                player_skill_active = True  # Activate Skill 1
+                player_skill_active = not player_skill_active  # Toggle Skill 1
+                # Deactivate skill 2 if skill 1 is activated
+                if player_skill_active:
+                    skill_2_active = False
                 continue
 
             # Skill 2 activation (Only available to Player, not Maze Master)
             if skill_2_button.collidepoint(mx, my) and not skill_2_used and player_turns < 4:
-                skill_2_active = True  # Activate teleport mode
+                skill_2_active = not skill_2_active  # Toggle teleport mode
+                # Deactivate skill 1 if skill 2 is activated
+                if skill_2_active:
+                    player_skill_active = False
                 continue
             
             if my < 50:
@@ -227,6 +409,7 @@ while running:
                     player_x, player_y = clicked_x, clicked_y
                     skill_2_active = False  # Deactivate teleport mode
                     skill_2_used = True  # Mark skill as used
+                    player_turns += 1  # Use a turn after teleporting
                 continue
             
             if player_turns < 4:
@@ -243,7 +426,7 @@ while running:
                     else:
                         wall_positions = [(clicked_x + i, clicked_y) for i in range(3)]
                     
-                    valid = all(0 <= wx < GRID_SIZE and 0 <= wy < GRID_SIZE and (wx, wy) != (player_x, player_y) and (wx, wy) != (end_x, end_y) for wx, wy in wall_positions)
+                    valid = all(0 <= wx < GRID_SIZE and 0 <= wy < GRID_SIZE and (wx, wy) != (player_x, player_y) and (wx, wy) != (end_x, end_y) and (wx, wy) not in walls for wx, wy in wall_positions)
                     
                     if valid:
                         walls.update(wall_positions)
