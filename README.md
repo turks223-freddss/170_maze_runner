@@ -1,7 +1,7 @@
-# Turn-Based Maze Game
+# Endless Laibyrinth (Turn-Based Maze Game)
 
 ## Overview
-The **Turn-Based Maze Game** is a strategic puzzle game where players navigate a grid-based maze, overcoming obstacles and utilizing special skills to reach the goal. The game alternates turns between the player and the AI-controlled "Maze Master."
+**Endless Laibyrinth** is a strategic puzzle game where players navigate a grid-based maze, overcoming obstacles and utilizing special skills to reach the goal. The game alternates turns between the player and the "Maze Master."
 
 ## How to Play
 - The player starts at the top-left corner of the grid (0,0).
