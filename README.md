@@ -14,5 +14,6 @@ skill_1(dash) - the player will be able to move up to 4 tiles instead of 1 tile 
 
 
 
-maze master
+maze master:
+skill_1(double walls) - the maze master can add 2x 3-tile walls based on normal / shift + click (vertical / horizontal walls)
 
