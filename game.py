@@ -30,6 +30,7 @@ walls_placed = 0
 player_turns = 0
 player_skill_active = False
 maze_skill_active = False
+maze_skill_cooldown = 0
 skill_2_active = False  # Skill 2 activation flag
 skill_2_used = False  # Track if skill 2 has been used
 game_won = False  # Flag to track if the player has won
@@ -122,8 +123,13 @@ while running:
                 player_skill_active = True  # Activate Skill 1 (Player)
                 continue
 
-            if skill_1_button.collidepoint(mx, my) and player_turns == 4:
+            if skill_1_button.collidepoint(mx, my) and player_turns == 4 and maze_skill_cooldown != 0:
+                print("Skill is on cooldown !")     # Removable (This was just for debugging purposes)
+                continue
+
+            if skill_1_button.collidepoint(mx, my) and player_turns == 4 and maze_skill_cooldown == 0:
                 maze_skill_active = True  # Activate Skill 1 (Maze Master)
+                maze_skill_cooldown = 3   # Skill 1 cooldown, skil can be used once per 3 maze master turns 
                 continue
 
             # Skill 2 activation (Only available to Player, not Maze Master)
@@ -175,9 +181,10 @@ while running:
                                 player_turns = 0
                                 walls_placed = 0
                                 maze_skill_active = False
+                                
                             
                     else:   # Basic Maze master movement
-
+                        
                         if pygame.key.get_pressed()[pygame.K_LSHIFT]:
                             wall_positions = [(clicked_x, clicked_y + i) for i in range(3)]
                         else:
@@ -188,7 +195,9 @@ while running:
                         if valid:
                             walls.update(wall_positions)
                             player_turns = 0
-    
+
+                        if maze_skill_cooldown > 0:     # Maze SKill 1 cooldown decrementer (To refresh skill)
+                            maze_skill_cooldown -= 1
     pygame.display.flip()
     clock.tick(60)
 
