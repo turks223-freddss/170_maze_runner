@@ -223,6 +223,30 @@ def get_valid_moves(x, y, max_distance):
                 if (0 <= new_x < GRID_SIZE and 0 <= new_y < GRID_SIZE and 
                     (new_x, new_y) not in game_state.walls and (new_x, new_y) != (x, y)):
                     valid_tiles.append((new_x, new_y))
+    elif game_state.player_skill_active:
+         # Horizontal line
+        for dx in range(1, 5):  # Moving right
+            new_x, new_y = x + dx, y
+            if new_x >= GRID_SIZE or (new_x, new_y) in game_state.walls:
+                break
+            valid_tiles.append((new_x, new_y))
+        for dx in range(1, 5):  # Moving left
+            new_x, new_y = x - dx, y
+            if new_x < 0 or (new_x, new_y) in game_state.walls:
+                break
+            valid_tiles.append((new_x, new_y))
+
+        # Vertical line
+        for dy in range(1, 5):  # Moving down
+            new_x, new_y = x, y + dy
+            if new_y >= GRID_SIZE or (new_x, new_y) in game_state.walls:
+                break
+            valid_tiles.append((new_x, new_y))
+        for dy in range(1, 5):  # Moving up
+            new_x, new_y = x, y - dy
+            if new_y < 0 or (new_x, new_y) in game_state.walls:
+                break
+            valid_tiles.append((new_x, new_y))
     else:
         for dx in range(-max_distance, max_distance + 1):
             for dy in range(-max_distance, max_distance + 1):
@@ -387,8 +411,21 @@ def handle_player_click(mx, my):
             game_state.total_player_steps += 1
         return
     
-    max_move = 4 if game_state.player_skill_active else 1
-    if (abs(clicked_x - game_state.player_x) + abs(clicked_y - game_state.player_y) <= max_move) and (clicked_x, clicked_y) not in game_state.walls:
+    # max_move = 4 if game_state.player_skill_active else 1
+    
+    if game_state.player_skill_active:
+        valid_moves = get_valid_moves(game_state.player_x, game_state.player_y, 1)
+        
+        if (clicked_x, clicked_y) in valid_moves:  # Allow movement only if it's in valid moves
+            game_state.player_x = clicked_x
+            game_state.player_y = clicked_y
+            game_state.player_turns += 1
+            game_state.total_player_steps += 1
+            game_state.player_skill_active = False
+        
+            
+        
+    if (abs(clicked_x - game_state.player_x) + abs(clicked_y - game_state.player_y) <= 1) and (clicked_x, clicked_y) not in game_state.walls:
         game_state.player_x, game_state.player_y = clicked_x, clicked_y
         game_state.player_turns += 1
         game_state.total_player_steps += 1
