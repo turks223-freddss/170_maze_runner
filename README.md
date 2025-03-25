@@ -14,19 +14,19 @@
 ## Controls
 - **Mouse Clicks**: Interact with skill buttons and place walls.
 
-## Skills
+## Runner Skills
 1. **Extended Move**: Increases movement range for one turn.
 2. **Teleport**: Allows the runner to jump to a distant tile once per game.
 3. **Wall Break**: Allows the runner to break a wall tile that can be unlocked every after 4 rounds.
+
+## Maze Master Skills
+1. **Double Wall**: Allows the maze master to add two 3-tile walls / shift + click (vertical / horizontal walls)
 
 ## Game Elements
 - **Walls**: Can be placed to create barriers and strategic advantages.
 - **Turn System**: Player 1("Runner") and Player 2 ("Maze Master") take turns.
 - **Notifications**: Visual indicators show whose turn it is.
 - **Highlighting**: Clickable areas and valid moves are highlighted for clarity.
-
-## Winning Condition
-The player wins upon reaching the designated goal tile at the bottom-right corner of the grid.
 
 ## Losing Condition
 The game is lost if the player is completely blocked with no available moves.
