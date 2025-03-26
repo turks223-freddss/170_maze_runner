@@ -1,5 +1,5 @@
 import pygame
-import math
+import random
 
 # Constants
 GRID_SIZE = 24
@@ -43,6 +43,9 @@ skill_2_used = False  # Track if skill 2 has been used
 skill_3_active = False  # Skill 3 (wall break) activation flag
 skill_3_used = False  # Track if skill 3 has been used
 skill_3_available = False  # Track if skill 3 is available
+maze_skill_3_active = False  # Tracks if Maze Master's teleport skill is active
+maze_skill_3_cooldown = 0    # Cooldown timer for Maze Master's teleport skill
+MAZE_SKILL_3_COOLDOWN_MAX = 3  # Number of turns before skill can be used again
 game_won = False  # Flag to track if the player has won
 
 # Track game progress for skill 3 availability
@@ -87,12 +90,21 @@ def draw_buttons():
     
     # Skill 3 button (Wall Break)
     # Orange if active, gray if not available or used up, blue if available
-    if skill_3_active:
-        skill_3_color = WALL_BREAK_COLOR
-    elif not skill_3_available or skill_3_used:
-        skill_3_color = GRAY
-    else:
-        skill_3_color = BLUE
+    if player_turns >= 4:  # During Maze Master's turn
+        if maze_skill_3_active:
+            skill_3_color = ACTIVE_SKILL_COLOR
+        elif maze_skill_3_cooldown > 0:
+            skill_3_color = GRAY
+        else:
+            skill_3_color = BLUE
+    else:  # During Player's turn - keep existing player skill 3 logic
+        if skill_3_active:
+            skill_3_color = WALL_BREAK_COLOR
+        elif not skill_3_available or skill_3_used:
+            skill_3_color = GRAY
+        else:
+            skill_3_color = BLUE
+    
     pygame.draw.rect(screen, skill_3_color, skill_3_button)
     
     pygame.draw.rect(screen, BLUE, skill_4_button)
@@ -392,6 +404,7 @@ def reset_game():
     global player_x, player_y, walls, player_turns, player_skill_active, skill_2_active, skill_2_used, game_won
     global show_turn_notification, turn_notification_timer, skill_3_active, skill_3_used, skill_3_available
     global total_player_steps, rounds_since_last_skill3
+    global maze_skill_3_active, maze_skill_3_cooldown
     
     player_x, player_y = 0, 0
     walls.clear()
@@ -406,6 +419,8 @@ def reset_game():
     game_won = False  # Reset win state
     total_player_steps = 0
     rounds_since_last_skill3 = 0
+    maze_skill_3_active = False
+    maze_skill_3_cooldown = 0
     
     # Show turn notification after reset
     show_turn_notification = True
@@ -416,6 +431,29 @@ show_turn_notification = True
 
 # Mouse tracking for hover effects
 mouse_x, mouse_y = 0, 0
+
+
+# Add this new function after the other skill-related functions
+def teleport_player_random():
+    """
+    Teleports the player to a random valid location on the grid.
+    
+    Returns:
+        bool: True if teleport was successful, False if no valid positions found
+    """
+    global player_x, player_y
+    
+    # Get all valid positions (excluding walls and end point)
+    valid_positions = [
+        (x, y) for x in range(GRID_SIZE) 
+        for y in range(GRID_SIZE)
+        if (x, y) not in walls and (x, y) != (end_x, end_y)
+    ]
+    
+    if valid_positions:
+        player_x, player_y = random.choice(valid_positions)
+        return True
+    return False
 
 # Game loop
 running = True
@@ -519,6 +557,21 @@ while running:
                     skill_2_active = False
                 continue
             
+            # Maze Master's Skill 3 (Random Teleport)
+            if (skill_3_button.collidepoint(mx, my) and 
+                player_turns >= 4 and  # Maze Master's turn
+                maze_skill_3_cooldown == 0):  # Skill not on cooldown
+                
+                maze_skill_3_active = True
+                if teleport_player_random():
+                    # Apply cooldown and end turn
+                    maze_skill_3_cooldown = MAZE_SKILL_3_COOLDOWN_MAX
+                    player_turns = 0
+                    show_turn_notification = True
+                    turn_notification_timer = 0
+                maze_skill_3_active = False
+                continue
+            
             if my < 50:
                 continue
 
@@ -605,6 +658,9 @@ while running:
 
                         if maze_skill1_cooldown > 0:     # Maze Skill 1 cooldown decrementer (To refresh skill)
                             maze_skill1_cooldown -= 1
+
+                        if maze_skill_3_cooldown > 0:
+                            maze_skill_3_cooldown -= 1
 
     pygame.display.flip()
     clock.tick(60)
