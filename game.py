@@ -36,8 +36,8 @@ walls = set()
 walls_placed = 0
 player_turns = 0
 player_skill_active = False
-maze_skill_active = False
-maze_skill_cooldown = 0
+maze_skill1_active = False
+maze_skill1_cooldown = 0
 skill_2_active = False  # Skill 2 activation flag
 skill_2_used = False  # Track if skill 2 has been used
 skill_3_active = False  # Skill 3 (wall break) activation flag
@@ -96,7 +96,18 @@ def draw_buttons():
     pygame.draw.rect(screen, skill_3_color, skill_3_button)
     
     pygame.draw.rect(screen, BLUE, skill_4_button)
+
+    #Maze Master Skills (or merge nalang with the player skills?)
     
+    if not player_turns < 4:
+        if maze_skill1_active:
+            skill_1_color = ACTIVE_SKILL_COLOR
+        elif maze_skill1_cooldown:
+            skill_1_color = GRAY
+        elif not maze_skill1_active and maze_skill1_cooldown:
+            skill_1_color = BLUE
+        pygame.draw.rect(screen, skill_1_color, skill_1_button)
+        
     # Draw button labels
     screen.blit(font.render("Skill 1", True, WHITE), (skill_1_button.x + 10, skill_1_button.y + 5))
     screen.blit(font.render("Skill 2", True, WHITE), (skill_2_button.x + 10, skill_2_button.y + 5))
@@ -155,6 +166,18 @@ def draw_turn_text():
             active_skill = "Wall Break"
             active_color = WALL_BREAK_COLOR
             
+        skill_info = small_font.render(f"{active_skill} Active", True, active_color)
+        x_pos = SCREEN_WIDTH // 2 - skill_info.get_width() // 2
+        screen.blit(skill_info, (x_pos, y_pos + 20))
+
+    # Add active skill info (Maze Master)
+    if maze_skill1_active:
+        active_skill = ""
+        active_color = ACTIVE_SKILL_COLOR
+        
+        if maze_skill1_active:
+            active_skill = "Double Walls"
+
         skill_info = small_font.render(f"{active_skill} Active", True, active_color)
         x_pos = SCREEN_WIDTH // 2 - skill_info.get_width() // 2
         screen.blit(skill_info, (x_pos, y_pos + 20))
@@ -374,7 +397,7 @@ def reset_game():
     walls.clear()
     player_turns = 0
     player_skill_active = False
-    maze_skill_active = False
+    maze_skill1_active = False
     skill_2_active = False
     skill_2_used = False  # Reset skill usage
     skill_3_active = False  # Reset wall break skill
@@ -469,13 +492,13 @@ while running:
                 player_skill_active = True  # Activate Skill 1 (Player)
                 continue
 
-            if skill_1_button.collidepoint(mx, my) and player_turns == 4 and maze_skill_cooldown != 0:
+            if skill_1_button.collidepoint(mx, my) and player_turns == 4 and maze_skill1_cooldown != 0:
                 print("Skill is on cooldown !")     # Removable (This was just for debugging purposes)
                 continue
 
-            if skill_1_button.collidepoint(mx, my) and player_turns == 4 and maze_skill_cooldown == 0:
-                maze_skill_active = True  # Activate Skill 1 (Maze Master)
-                maze_skill_cooldown = 3   # Skill 1 cooldown, skil can be used once per 3 maze master turns 
+            if skill_1_button.collidepoint(mx, my) and player_turns == 4 and maze_skill1_cooldown == 0:
+                maze_skill1_active = True  # Activate Skill 1 (Maze Master)
+                maze_skill1_cooldown = 3   # Skill 1 cooldown, skil can be used once per 3 maze master turns 
                 continue
 
             # Skill 2 activation (Only available to Player, not Maze Master)
@@ -533,7 +556,7 @@ while running:
             else:   # Maze master's Turn
 
                 if (clicked_x, clicked_y) != (player_x, player_y) and (clicked_x, clicked_y) != (end_x, end_y):
-                    if maze_skill_active:   # Skill 1 is activated (Maze master)
+                    if maze_skill1_active:   # Skill 1 is activated (Maze master)
 
                         if walls_placed < 2:    # Required to place 2 walls
                             if pygame.key.get_pressed()[pygame.K_LSHIFT]:
@@ -553,7 +576,7 @@ while running:
                             else:                   # 2 walls have been placed, exit skill and end turn.
                                 player_turns = 0
                                 walls_placed = 0
-                                maze_skill_active = False
+                                maze_skill1_active = False
                                 
                         # Show turn notification when Maze Master completes their turn
                         show_turn_notification = True
@@ -580,8 +603,8 @@ while running:
                         turn_notification_timer = 0
                         rounds_since_last_skill3 += 1
 
-                        if maze_skill_cooldown > 0:     # Maze Skill 1 cooldown decrementer (To refresh skill)
-                            maze_skill_cooldown -= 1
+                        if maze_skill1_cooldown > 0:     # Maze Skill 1 cooldown decrementer (To refresh skill)
+                            maze_skill1_cooldown -= 1
 
     pygame.display.flip()
     clock.tick(60)
