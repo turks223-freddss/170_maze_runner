@@ -36,6 +36,7 @@ walls = set()
 walls_placed = 0
 player_turns = 0
 player_skill_active = False
+player_skill_active_used=False
 maze_skill1_active = False
 maze_skill1_cooldown = 0
 skill_2_active = False  # Skill 2 activation flag
@@ -75,6 +76,12 @@ update_button_positions()
 
 def draw_buttons():
     # Skill 1 button (Extended Move) - Change color when active
+    if player_skill_active_used:
+        skill_1_color = GRAY
+    elif player_skill_active:
+        skill_1_color = ACTIVE_SKILL_COLOR
+    else:
+        skill_1_color = BLUE
     skill_1_color = ACTIVE_SKILL_COLOR if player_skill_active else BLUE
     pygame.draw.rect(screen, skill_1_color, skill_1_button)
     
@@ -250,7 +257,30 @@ def get_valid_moves(x, y, max_distance):
                 if (0 <= new_x < GRID_SIZE and 0 <= new_y < GRID_SIZE and 
                     (new_x, new_y) not in walls and (new_x, new_y) != (x, y)):
                     valid_tiles.append((new_x, new_y))
-    # For normal movement or skill 1, use Manhattan distance
+    elif player_skill_active:
+         # Horizontal line
+        for dx in range(1, 5):  # Moving right
+            new_x, new_y = x + dx, y
+            if new_x >= GRID_SIZE or (new_x, new_y) in walls:
+                break
+            valid_tiles.append((new_x, new_y))
+        for dx in range(1, 5):  # Moving left
+            new_x, new_y = x - dx, y
+            if new_x < 0 or (new_x, new_y) in walls:
+                break
+            valid_tiles.append((new_x, new_y))
+
+        # Vertical line
+        for dy in range(1, 5):  # Moving down
+            new_x, new_y = x, y + dy
+            if new_y >= GRID_SIZE or (new_x, new_y) in walls:
+                break
+            valid_tiles.append((new_x, new_y))
+        for dy in range(1, 5):  # Moving up
+            new_x, new_y = x, y - dy
+            if new_y < 0 or (new_x, new_y) in walls:
+                break
+            valid_tiles.append((new_x, new_y))
     else:
         for dx in range(-max_distance, max_distance + 1):
             for dy in range(-max_distance, max_distance + 1):
@@ -598,9 +628,20 @@ while running:
                 continue
             
             if player_turns < 4:
-                max_move = 4 if player_skill_active else 1
+                #max_move = 4 if player_skill_active else 1
                 
-                if (abs(clicked_x - player_x) + abs(clicked_y - player_y) <= max_move) and (clicked_x, clicked_y) not in walls:
+                if player_skill_active:
+                    valid_moves = get_valid_moves(player_x, player_y, 1)
+                    
+                    if(clicked_x,clicked_y) in valid_moves:
+                        player_x, player_y = clicked_x, clicked_y
+                        player_turns += 1
+                        total_player_steps += 1  # Increment total steps
+                        player_skill_active = False  # Deactivate skill after use
+                        player_skill_active_used=True
+                     
+                
+                if (abs(clicked_x - player_x) + abs(clicked_y - player_y) <= 1) and (clicked_x, clicked_y) not in walls:
                     player_x, player_y = clicked_x, clicked_y
                     player_turns += 1
                     total_player_steps += 1  # Increment total steps
