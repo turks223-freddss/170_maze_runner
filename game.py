@@ -124,7 +124,7 @@ def draw_buttons():
         elif maze_skill2_used:
             skill_2_color = GRAY
         else:
-            skill_2_color = DIAGONAL_WALL_COLOR
+            skill_2_color = BLUE
         pygame.draw.rect(screen, skill_2_color, skill_2_button)
         
         # Skill 3 button (Teleport Player)
