@@ -65,7 +65,7 @@ turn_notification_duration = 60  # How long to show the notification (in frames)
 
 # Skill button rects
 def update_button_positions():
-    global skill_1_button, skill_2_button, skill_3_button, skill_4_button
+    global skill_1_button, skill_2_button, skill_3_button
     button_width = 80
     button_height = 25
     spacing = 10
@@ -73,7 +73,6 @@ def update_button_positions():
     skill_1_button = pygame.Rect(spacing, 10, button_width, button_height)
     skill_2_button = pygame.Rect(spacing + button_width + spacing, 10, button_width, button_height)
     skill_3_button = pygame.Rect(SCREEN_WIDTH - (2 * (button_width + spacing)), 10, button_width, button_height)
-    skill_4_button = pygame.Rect(SCREEN_WIDTH - (button_width + spacing), 10, button_width, button_height)
 
 update_button_positions()
 
@@ -137,11 +136,11 @@ def draw_buttons():
         pygame.draw.rect(screen, skill_3_color, skill_3_button)
     
     # Common button labels
-    pygame.draw.rect(screen, BLUE, skill_4_button)
+    pygame.draw.rect(screen, BLUE, skill_3_button)
     screen.blit(font.render("Skill 1", True, WHITE), (skill_1_button.x + 10, skill_1_button.y + 5))
     screen.blit(font.render("Skill 2", True, WHITE), (skill_2_button.x + 10, skill_2_button.y + 5))
     screen.blit(font.render("Skill 3", True, WHITE), (skill_3_button.x + 10, skill_3_button.y + 5))
-    screen.blit(font.render("Skill 4", True, WHITE), (skill_4_button.x + 10, skill_4_button.y + 5))
+    # screen.blit(font.render("Skill 4", True, WHITE), (skill_4_button.x + 10, skill_4_button.y + 5))
     
     # Active skill indicators
     if player_skill_active:
