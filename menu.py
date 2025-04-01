@@ -181,13 +181,13 @@ while running:
                     help_page, menu = False, True
             elif mode_select:
                 if mode_buttons["PvP"].collidepoint(mx, my):
-                    subprocess.Popen(["python", "game.py", "pvp"])
+                    subprocess.Popen(["python", "170_maze_runner/game.py", "pvp"])
                     running = False
                 elif mode_buttons["Play as Runner"].collidepoint(mx, my):
-                    subprocess.Popen(["python", "game.py", "runner"])
+                    subprocess.Popen(["python", "170_maze_runner/game.py", "runner"])
                     running = False
                 elif mode_buttons["Play as Master"].collidepoint(mx, my):
-                    subprocess.Popen(["python", "game.py", "master"])
+                    subprocess.Popen(["python", "170_maze_runner/game.py", "master"])
                     running = False
                 elif mode_buttons["Back"].collidepoint(mx, my):
                     mode_select = False
