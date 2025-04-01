@@ -17,16 +17,25 @@ font = pygame.font.Font(None, 40)
 small_font = pygame.font.Font(None, 22)
 clock = pygame.time.Clock()
 
-# Buttons
-buttons = {
-    "Start": pygame.Rect(SCREEN_WIDTH // 2 - 50, 150, 100, 40),
-    "Help": pygame.Rect(SCREEN_WIDTH // 2 - 50, 100, 100, 40),
-    "Exit": pygame.Rect(SCREEN_WIDTH // 2 - 50, 200, 100, 40)
-}
-
 # Game States
 menu = True
 help_page = False
+mode_select = False
+
+# Buttons for main menu
+buttons = {
+    "Play": pygame.Rect(SCREEN_WIDTH // 2 - 50, 100, 100, 40),
+    "Help": pygame.Rect(SCREEN_WIDTH // 2 - 50, 150, 100, 40),
+    "Exit": pygame.Rect(SCREEN_WIDTH // 2 - 50, 200, 100, 40)
+}
+
+# Buttons for mode selection
+mode_buttons = {
+    "PvP": pygame.Rect(SCREEN_WIDTH // 2 - 100, 100, 200, 40),
+    "Play as Runner": pygame.Rect(SCREEN_WIDTH // 2 - 100, 150, 200, 40),
+    "Play as Master": pygame.Rect(SCREEN_WIDTH // 2 - 100, 200, 200, 40),
+    "Back": pygame.Rect(SCREEN_WIDTH // 2 - 50, 250, 100, 40)
+}
 
 # Scroll variables
 scroll_offset = 0
@@ -118,6 +127,25 @@ def handle_scrolling(event):
     elif event.button == 5:  # Scroll down
         scroll_offset = min(max_scroll_offset, scroll_offset + scroll_speed)
 
+def draw_mode_select():
+    """ Draws the mode selection screen """
+    screen.fill(WHITE)
+
+    # Title
+    title_text = font.render("Select Game Mode", True, BLACK)
+    screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 50))
+
+    # Get mouse position once
+    mouse_x, mouse_y = pygame.mouse.get_pos()
+
+    # Draw buttons with hover effects
+    for text, rect in mode_buttons.items():
+        color = HOVER_BLUE if rect.collidepoint(mouse_x, mouse_y) else BLUE
+        if text == "Back":
+            color = HOVER_RED if rect.collidepoint(mouse_x, mouse_y) else RED
+        pygame.draw.rect(screen, color, rect)
+        draw_text(text, font, WHITE, rect.x, rect.y)
+
 # Main menu loop
 running = True
 while running:
@@ -127,6 +155,8 @@ while running:
         draw_menu()
     elif help_page:
         draw_help()
+    elif mode_select:
+        draw_mode_select()
 
     pygame.display.flip()
 
@@ -137,17 +167,30 @@ while running:
             mx, my = pygame.mouse.get_pos()
 
             if menu:
-                if buttons["Start"].collidepoint(mx, my):
-                    subprocess.Popen(["python", "game.py"])  # Start the game
-                    running = False
+                if buttons["Play"].collidepoint(mx, my):
+                    mode_select = True
+                    menu = False
                 elif buttons["Help"].collidepoint(mx, my):
                     help_page, menu = True, False
                 elif buttons["Exit"].collidepoint(mx, my):
                     running = False
             elif help_page:
-                if event.button in (4, 5):  # Scroll event (mouse wheel up/down)
+                if event.button in (4, 5):
                     handle_scrolling(event)
                 else:
-                    help_page, menu = False, True  # Click anywhere to return
+                    help_page, menu = False, True
+            elif mode_select:
+                if mode_buttons["PvP"].collidepoint(mx, my):
+                    subprocess.Popen(["python", "game.py", "pvp"])
+                    running = False
+                elif mode_buttons["Play as Runner"].collidepoint(mx, my):
+                    subprocess.Popen(["python", "game.py", "runner"])
+                    running = False
+                elif mode_buttons["Play as Master"].collidepoint(mx, my):
+                    subprocess.Popen(["python", "game.py", "master"])
+                    running = False
+                elif mode_buttons["Back"].collidepoint(mx, my):
+                    mode_select = False
+                    menu = True
 
 pygame.quit()

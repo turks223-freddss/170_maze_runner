@@ -1,5 +1,7 @@
 import pygame
 import random
+import sys
+from ai_logic import MazeRunnerAI, MazeMasterAI
 
 # Constants
 GRID_SIZE = 24
@@ -517,6 +519,19 @@ def teleport_player_random():
         return True
     return False
 
+# Get game mode from command line argument
+game_mode = "pvp"  # default mode
+if len(sys.argv) > 1:
+    game_mode = sys.argv[1]
+
+# Initialize AI if needed
+runner_ai = None
+master_ai = None
+if game_mode == "runner":
+    master_ai = MazeMasterAI(GRID_SIZE)
+elif game_mode == "master":
+    runner_ai = MazeRunnerAI(GRID_SIZE)
+
 # Game loop
 running = True
 last_turn_state = player_turns < 4  # Track turn state to detect changes
@@ -525,6 +540,58 @@ while running:
 
     # Update mouse position for hover effects
     mouse_x, mouse_y = pygame.mouse.get_pos()
+
+    # AI moves if it's their turn
+    if not game_won:
+        if game_mode == "runner" and player_turns >= 4:
+            # Maze Master AI's turn
+            master_ai.update_state(walls, (player_x, player_y), total_player_steps)
+            wall_pos, is_horizontal, skill = master_ai.decide_move()
+            
+            if skill == "skill_1":
+                maze_skill1_active = True
+            elif skill == "skill_2":
+                maze_skill2_active = True
+                maze_skill2_used = True
+            elif skill == "skill_3" and maze_skill_3_cooldown == 0:
+                if teleport_player_random():
+                    maze_skill_3_cooldown = MAZE_SKILL_3_COOLDOWN_MAX
+                    player_turns = 0
+                    show_turn_notification = True
+                    turn_notification_timer = 0
+            
+            if not any([maze_skill1_active, maze_skill2_active, maze_skill_3_active]):
+                # Place wall using AI's decision
+                if is_valid_wall_position(wall_pos[0], wall_pos[1], is_horizontal):
+                    if is_horizontal:
+                        wall_positions = [(wall_pos[0] + i, wall_pos[1]) for i in range(3)]
+                    else:
+                        wall_positions = [(wall_pos[0], wall_pos[1] + i) for i in range(3)]
+                    walls.update(wall_positions)
+                    player_turns = 0
+                    show_turn_notification = True
+                    turn_notification_timer = 0
+                    rounds_since_last_skill3 += 1
+        
+        elif game_mode == "master" and player_turns < 4:
+            # Runner AI's turn
+            runner_ai.update_state(walls, (player_x, player_y))
+            next_pos, skill, use_skill = runner_ai.decide_move()
+            
+            if use_skill:
+                if skill == "skill_1":
+                    player_skill_active = True
+                elif skill == "skill_2":
+                    skill_2_active = True
+                elif skill == "skill_3":
+                    skill_3_active = True
+            
+            if not any([player_skill_active, skill_2_active, skill_3_active]):
+                # Move to AI's decided position
+                if next_pos in get_valid_moves(player_x, player_y, 1):
+                    player_x, player_y = next_pos
+                    player_turns += 1
+                    total_player_steps += 1
 
     # Check if the player has reached the goal
     if player_x == end_x and player_y == end_y:
