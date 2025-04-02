@@ -278,7 +278,7 @@ class MazeMasterAI:
         
         return positions
 
-    def decide_move(self) -> Tuple[Tuple[int, int], bool, str]:
+    def decide_move(self, walls_placed:int) -> Tuple[Tuple[int, int], bool, str]:
         """Decide the next wall placement and whether to use a skill"""
         strategic_positions = self.get_strategic_wall_positions()
         if not strategic_positions:
@@ -287,7 +287,6 @@ class MazeMasterAI:
         # Consider using Skill 1 (Double Walls)
         if self.skill_1_cooldown == 0 and len(strategic_positions) >= 2 and random.random() < self.difficulty:
             pos1, is_horizontal1 = strategic_positions[0]
-            pos2, is_horizontal2 = strategic_positions[1]
             return pos1, is_horizontal1, "skill_1"
             
         # Consider using Skill 2 (Diagonal Walls)I

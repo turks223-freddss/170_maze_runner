@@ -559,13 +559,42 @@ while running:
         if game_mode == "runner" and player_turns >= 4:
             # Maze Master AI's turn
             master_ai.update_state(walls, (player_x, player_y), total_player_steps)
-            wall_pos, is_horizontal, skill = master_ai.decide_move()
+            wall_pos, is_horizontal, skill = master_ai.decide_move(walls_placed)
             
             if skill == "skill_1":
                 maze_skill1_active = True
+            
+                pos1 = wall_pos
+                is_horizontal1 = is_horizontal
+
+                if is_valid_wall_position(pos1[0], pos1[1], is_horizontal1):
+                    walls.update([(pos1[0] + i, pos1[1]) for i in range(3)] if is_horizontal1 else [(pos1[0], pos1[1] + i) for i in range(3)])
+
+                walls_placed += 1
+
+                if walls_placed < 2:
+                    wall_pos, is_horizontal, skill = master_ai.decide_move(walls_placed)
+                    pos1 = wall_pos
+                    is_horizontal1 = is_horizontal
+
+                    if is_valid_wall_position(pos1[0], pos1[1], is_horizontal1):
+                        walls.update([(pos1[0] + i, pos1[1]) for i in range(3)] if is_horizontal1 else [(pos1[0], pos1[1] + i) for i in range(3)])
+
+                    walls_placed += 1
+
+                if walls_placed == 2:
+                    player_turns = 0
+                    walls_placed = 0
+                    master_ai.skill_1_cooldown = 3
+                    maze_skill1_active = False
+
+
+                show_turn_notification = True
+                turn_notification_timer = 0
+                rounds_since_last_skill3 += 1
                 
             elif skill == "skill_2":
-                # print("hello")
+                
                 maze_skill2_active = True
                 maze_skill2_used = True
                 direction = "urdl" if pygame.key.get_pressed()[pygame.K_LSHIFT] else "uldr"
@@ -573,7 +602,7 @@ while running:
                 if valid:
                     walls.update(wall_positions)
                     maze_skill2_active = False
-                    maze_skill2_used = True
+                    master_ai.skill_2_used = True
                     player_turns = 0
                     show_turn_notification = True
                     turn_notification_timer = 0
@@ -581,7 +610,7 @@ while running:
                 
             elif skill == "skill_3" and maze_skill_3_cooldown == 0:
                 if teleport_player_random():
-                    maze_skill_3_cooldown = MAZE_SKILL_3_COOLDOWN_MAX
+                    master_ai.skill_3_cooldown = MAZE_SKILL_3_COOLDOWN_MAX
                     player_turns = 0
                     show_turn_notification = True
                     turn_notification_timer = 0
@@ -608,6 +637,11 @@ while running:
                         pygame.time.delay(2000)
                         reset_game()
                         continue
+
+            if master_ai.skill_1_cooldown > 0:
+                master_ai.skill_1_cooldown -= 1
+            if master_ai.skill_3_cooldown > 0:
+                master_ai.skill_3_cooldown -= 1
         
         elif game_mode == "master" and player_turns < 4:
             # Runner AI's turn
