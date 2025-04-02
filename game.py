@@ -465,8 +465,10 @@ def reset_game():
     global player_x, player_y, walls, player_turns, player_skill_active, skill_2_active, skill_2_used
     global show_turn_notification, turn_notification_timer, skill_3_active, skill_3_used, skill_3_available
     global total_player_steps, rounds_since_last_skill3, maze_skill_3_active, maze_skill_3_cooldown
-    global maze_skill2_active, maze_skill2_used, player_skill_active_used
-    
+    global maze_skill2_active, maze_skill2_used, player_skill_active_used, game_won
+    global runner_ai, master_ai, game_mode
+
+    # Reset player position and skills
     player_x, player_y = 0, 0
     walls.clear()
     player_turns = 0
@@ -485,10 +487,18 @@ def reset_game():
     maze_skill_3_cooldown = 0
     maze_skill2_active = False
     maze_skill2_used = False
-    
+
+    # Re-initialize AI objects based on game mode
+    if game_mode == "runner":
+        master_ai = MazeMasterAI(GRID_SIZE)
+    elif game_mode == "master":
+        runner_ai = MazeRunnerAI(GRID_SIZE)
+
     # Show turn notification after reset
     show_turn_notification = True
     turn_notification_timer = 0
+
+    print("Game has been reset successfully.")  # Debug message to verify reset
 
 # Show turn notification at game start
 show_turn_notification = True
