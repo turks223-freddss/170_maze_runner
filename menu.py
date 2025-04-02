@@ -62,7 +62,7 @@ help_sections = {
     "Basics": {
         "color": BLUE,
         "content": [
-            "Runner starts at (0,0)",
+            "Runner starts at (0,0) and has 4 moves each turn",
             "Goal: Reach bottom-right corner",
             "Movement is turn-based",
             "Game ends when runner reaches goal or is trapped",
@@ -72,17 +72,17 @@ help_sections = {
     "Runner Skills": {
         "color": (0, 150, 0),
         "content": [
-            "Sprint: Move up to 4 tiles (2 turns)",
-            "Teleport: Jump to distant tile once",
-            "Break Wall: Remove obstacle (every 4 rounds)"
+            "(Skill 1) Sprint: Move up to 4 tiles (Consumes 2 moves)",
+            "(Skill 2) Teleport: Jump to distant tile once",
+            "(Skill 3) Break Wall: Remove obstacle (every 4 rounds)"
         ]
     },
     "Master Skills": {
         "color": (150, 0, 0),
         "content": [
-            "Double Wall: Place 2 walls in 1 turn",
-            "Diagonal Wall: Place walls diagonally once",
-            "Force Teleport: Move runner randomly"
+            "(Skill 1) Double Wall: Place 2 walls in 1 turn",
+            "(Skill 2) Diagonal Wall: Place walls diagonally once",
+            "(Skill 3) Force Teleport: Move runner randomly"
         ]
     }
 }
