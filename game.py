@@ -563,9 +563,22 @@ while running:
             
             if skill == "skill_1":
                 maze_skill1_active = True
+                
             elif skill == "skill_2":
+                # print("hello")
                 maze_skill2_active = True
                 maze_skill2_used = True
+                direction = "urdl" if pygame.key.get_pressed()[pygame.K_LSHIFT] else "uldr"
+                valid, wall_positions = is_valid_diagonal_wall_position(wall_pos[0], wall_pos[1], direction)
+                if valid:
+                    walls.update(wall_positions)
+                    maze_skill2_active = False
+                    maze_skill2_used = True
+                    player_turns = 0
+                    show_turn_notification = True
+                    turn_notification_timer = 0
+                    rounds_since_last_skill3 += 1
+                
             elif skill == "skill_3" and maze_skill_3_cooldown == 0:
                 if teleport_player_random():
                     maze_skill_3_cooldown = MAZE_SKILL_3_COOLDOWN_MAX

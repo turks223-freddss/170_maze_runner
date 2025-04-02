@@ -292,12 +292,15 @@ class MazeMasterAI:
             
         # Consider using Skill 2 (Diagonal Walls)I
         if not self.skill_2_used and random.random() < self.difficulty:
+            # print("hi")
             # Find a good position for diagonal wall
             path = self.find_shortest_path(self.player_pos, self.end_pos)
             if path and len(path) > 2:
                 mid_point = path[len(path)//2]
                 if 0 <= mid_point[0] < self.grid_size-2 and 0 <= mid_point[1] < self.grid_size-2:
+                    self.skill_2_used=True
                     return mid_point, True, "skill_2"
+            
         
         # Consider using Skill 3 (Teleport Player)
         if self.skill_3_cooldown == 0 and random.random() < self.difficulty:
