@@ -1,6 +1,10 @@
 import pygame
 import subprocess
 import textwrap
+import os
+
+# Get the directory where this script (menu.py) is located
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Initialize Pygame
 pygame.init()
@@ -9,114 +13,184 @@ pygame.init()
 SCREEN_WIDTH, SCREEN_HEIGHT = 600, 400
 WHITE, BLACK, BLUE, RED, GRAY = (255, 255, 255), (0, 0, 0), (0, 0, 255), (255, 0, 0), (200, 200, 200)
 HOVER_BLUE, HOVER_RED = (0, 100, 255), (200, 0, 0)
+LIGHT_BLUE = (200, 220, 255)
+DARK_BLUE = (0, 50, 150)
 
 # Create screen
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Maze Runner")
 font = pygame.font.Font(None, 40)
 small_font = pygame.font.Font(None, 22)
+title_font = pygame.font.Font(None, 48)
+section_font = pygame.font.Font(None, 32)
 clock = pygame.time.Clock()
-
-# Buttons
-buttons = {
-    "Start": pygame.Rect(SCREEN_WIDTH // 2 - 50, 150, 100, 40),
-    "Help": pygame.Rect(SCREEN_WIDTH // 2 - 50, 100, 100, 40),
-    "Exit": pygame.Rect(SCREEN_WIDTH // 2 - 50, 200, 100, 40)
-}
 
 # Game States
 menu = True
 help_page = False
+mode_select = False
+
+# Button dimensions for main menu
+button_width = 120
+button_height = 40
+button_spacing = 20
+start_y = SCREEN_HEIGHT // 2 - (3 * button_height + 2 * button_spacing) // 2
+
+# Buttons for main menu - centered vertically and horizontally
+buttons = {
+    "Play": pygame.Rect(SCREEN_WIDTH // 2 - button_width // 2, start_y, button_width, button_height),
+    "Help": pygame.Rect(SCREEN_WIDTH // 2 - button_width // 2, start_y + button_height + button_spacing, button_width, button_height),
+    "Exit": pygame.Rect(SCREEN_WIDTH // 2 - button_width // 2, start_y + 2 * (button_height + button_spacing), button_width, button_height)
+}
+
+# Buttons for mode selection - making them wider
+button_width = 250
+mode_buttons = {
+    "PvP": pygame.Rect(SCREEN_WIDTH // 2 - button_width // 2, 100, button_width, 40),
+    "Play as Runner": pygame.Rect(SCREEN_WIDTH // 2 - button_width // 2, 150, button_width, 40),
+    "Play as Master": pygame.Rect(SCREEN_WIDTH // 2 - button_width // 2, 200, button_width, 40),
+    "Back": pygame.Rect(SCREEN_WIDTH // 2 - 50, 250, 100, 40)
+}
 
 # Scroll variables
 scroll_offset = 0
 scroll_speed = 15
 max_scroll_offset = 0
 
-# Help text (wrapped)
-raw_help_text = [
-    "The runner starts at the top-left corner (0,0).",
-    "Goal: Reach the bottom-right corner.",
-    "Movement is turn-based.",
-    "Use skills to bypass obstacles or move faster.",
-    "Walls can be placed to block paths.",
-    "Game ends when the runner reaches the goal or is trapped.",
-    "",
-    "Skills:",
-    "Runner Skill 1: Move up to 4 tiles, costs 2 turns.",
-    "Runner Skill 2: Teleport to a distant tile once.",
-    "Runner Skill 3: Break a wall (unlocks every 4 rounds).",
-    "Maze Master Skill 1: Place 2 walls in 1 turn (every 2 turns).",
-    "Maze Master Skill 2: Place walls diagonally once.",
-    "Maze Master Skill 3: Teleport player randomly.",
-    "",
-    "Game Elements:",
-    "Walls: Block paths strategically.",
-    "Turn System: Players take turns moving or placing walls.",
-    "Notifications: Turn indicators appear visually.",
-    "Highlighting: Clickable areas are highlighted.",
-    "",
-    "Win: Reach the goal tile.",
-    "Lose: Get completely blocked.",
-    "",
-    "Scroll to read. Click to return."
-]
+# Help sections with icons and colors
+help_sections = {
+    "Basics": {
+        "color": BLUE,
+        "content": [
+            "Runner starts at (0,0)",
+            "Goal: Reach bottom-right corner",
+            "Movement is turn-based",
+            "Game ends when runner reaches goal or is trapped"
+        ]
+    },
+    "Runner Skills": {
+        "color": (0, 150, 0),
+        "content": [
+            "Sprint: Move up to 4 tiles (2 turns)",
+            "Teleport: Jump to distant tile once",
+            "Break Wall: Remove obstacle (every 4 rounds)"
+        ]
+    },
+    "Master Skills": {
+        "color": (150, 0, 0),
+        "content": [
+            "Double Wall: Place 2 walls in 1 turn",
+            "Diagonal Wall: Place walls diagonally once",
+            "Force Teleport: Move runner randomly"
+        ]
+    }
+}
 
-# Wrap text to fit screen width (max 50 characters per line)
-help_text = []
-for line in raw_help_text:
-    help_text.extend(textwrap.wrap(line, width=50))
-
-def draw_text(text, font, color, x, y):
-    """ Utility function to draw centered text inside buttons """
+def draw_text(text, font, color, x, y, centered=True):
+    """Utility function to draw text"""
     text_surface = font.render(text, True, color)
-    screen.blit(text_surface, (x + (100 - text_surface.get_width()) // 2, y + 5))
+    if centered:
+        x = x - text_surface.get_width() // 2
+    screen.blit(text_surface, (x, y))
 
 def draw_menu():
-    """ Draws the main menu screen """
+    """Draws the main menu screen"""
     screen.fill(WHITE)
 
-    # Title
-    title_text = font.render("Maze Runner", True, BLACK)
-    screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 50))
+    # Title with background
+    pygame.draw.rect(screen, DARK_BLUE, (0, 0, SCREEN_WIDTH, 60))
+    draw_text("Maze Runner", title_font, WHITE, SCREEN_WIDTH // 2, 15)
 
     # Get mouse position once
     mouse_x, mouse_y = pygame.mouse.get_pos()
 
-    # Draw buttons with hover effects
+    # Draw buttons with hover effects and improved visuals
     for text, rect in buttons.items():
+        # Button background with hover effect
         color = HOVER_BLUE if rect.collidepoint(mouse_x, mouse_y) else (BLUE if text != "Exit" else RED)
-        pygame.draw.rect(screen, color, rect)
-        draw_text(text, font, WHITE, rect.x, rect.y)
+        
+        # Draw button with rounded corners
+        pygame.draw.rect(screen, color, rect, border_radius=10)
+        
+        # Center text in button
+        text_surface = font.render(text, True, WHITE)
+        text_x = rect.centerx - text_surface.get_width() // 2
+        text_y = rect.centery - text_surface.get_height() // 2
+        screen.blit(text_surface, (text_x, text_y))
 
 def draw_help():
-    """ Displays help text with a sticky navbar """
-    global scroll_offset, max_scroll_offset
-
+    """Displays help text with sections and visual elements"""
     screen.fill(WHITE)
+    
+    # Title
+    pygame.draw.rect(screen, DARK_BLUE, (0, 0, SCREEN_WIDTH, 60))
+    draw_text("How to Play", title_font, WHITE, SCREEN_WIDTH // 2, 15)
+    
+    # Calculate visible area
+    visible_height = SCREEN_HEIGHT - 70
+    y_pos = 80 - scroll_offset
+    
+    # Draw sections
+    total_height = 0
+    for section, data in help_sections.items():
+        section_height = len(data["content"]) * 30 + 90  # Header + content + padding
+        total_height += section_height
+        
+        # Only draw if section is in view
+        if y_pos + section_height > 60 and y_pos < SCREEN_HEIGHT:
+            # Section header
+            section_bg = pygame.Rect(20, y_pos, SCREEN_WIDTH - 40, 40)
+            pygame.draw.rect(screen, data["color"], section_bg, border_radius=10)
+            draw_text(section, section_font, WHITE, SCREEN_WIDTH // 2, y_pos + 5)
+            
+            # Content box
+            content_bg = pygame.Rect(30, y_pos + 45, SCREEN_WIDTH - 60, len(data["content"]) * 30 + 10)
+            pygame.draw.rect(screen, LIGHT_BLUE, content_bg, border_radius=5)
+            
+            # Content text
+            for i, line in enumerate(data["content"]):
+                draw_text(line, small_font, BLACK, 45, y_pos + 55 + i * 30, centered=False)
+        
+        y_pos += section_height
 
-    # Sticky Title (Navbar Effect)
-    pygame.draw.rect(screen, WHITE, (0, 0, SCREEN_WIDTH, 50))  # Background bar
-    title_text = font.render("How to Play", True, BLACK)
-    screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 10))  # Fixed at top
-
-    # Calculate max scrollable height
-    total_text_height = len(help_text) * 25
-    max_scroll_offset = max(0, total_text_height - (SCREEN_HEIGHT - 70))  # Adjusted for navbar
-
-    # Render text with scrolling
-    y_offset = 60 - scroll_offset  # Below navbar
-    for line in help_text:
-        screen.blit(small_font.render(line, True, BLACK), (30, y_offset))
-        y_offset += 25
+    # Update max scroll offset
+    global max_scroll_offset
+    max_scroll_offset = max(0, total_height - visible_height)
 
 def handle_scrolling(event):
-    """ Handles scrolling input """
+    """Handles scrolling input with improved boundaries"""
     global scroll_offset
     if event.button == 4:  # Scroll up
         scroll_offset = max(0, scroll_offset - scroll_speed)
     elif event.button == 5:  # Scroll down
         scroll_offset = min(max_scroll_offset, scroll_offset + scroll_speed)
+
+def draw_mode_select():
+    """Draws the mode selection screen"""
+    screen.fill(WHITE)
+
+    # Title with background
+    pygame.draw.rect(screen, DARK_BLUE, (0, 0, SCREEN_WIDTH, 60))
+    draw_text("Select Game Mode", title_font, WHITE, SCREEN_WIDTH // 2, 15)
+
+    # Get mouse position once
+    mouse_x, mouse_y = pygame.mouse.get_pos()
+
+    # Draw buttons with hover effects and improved visuals
+    for text, rect in mode_buttons.items():
+        # Button background with hover effect
+        color = HOVER_BLUE if rect.collidepoint(mouse_x, mouse_y) else BLUE
+        if text == "Back":
+            color = HOVER_RED if rect.collidepoint(mouse_x, mouse_y) else RED
+        
+        # Draw button with rounded corners
+        pygame.draw.rect(screen, color, rect, border_radius=10)
+        
+        # Center text in button
+        text_surface = font.render(text, True, WHITE)
+        text_x = rect.centerx - text_surface.get_width() // 2
+        text_y = rect.centery - text_surface.get_height() // 2
+        screen.blit(text_surface, (text_x, text_y))
 
 # Main menu loop
 running = True
@@ -127,6 +201,8 @@ while running:
         draw_menu()
     elif help_page:
         draw_help()
+    elif mode_select:
+        draw_mode_select()
 
     pygame.display.flip()
 
@@ -137,17 +213,30 @@ while running:
             mx, my = pygame.mouse.get_pos()
 
             if menu:
-                if buttons["Start"].collidepoint(mx, my):
-                    subprocess.Popen(["python", "game.py"])  # Start the game
-                    running = False
+                if buttons["Play"].collidepoint(mx, my):
+                    mode_select = True
+                    menu = False
                 elif buttons["Help"].collidepoint(mx, my):
                     help_page, menu = True, False
                 elif buttons["Exit"].collidepoint(mx, my):
                     running = False
             elif help_page:
-                if event.button in (4, 5):  # Scroll event (mouse wheel up/down)
+                if event.button in (4, 5):
                     handle_scrolling(event)
                 else:
-                    help_page, menu = False, True  # Click anywhere to return
+                    help_page, menu = False, True
+            elif mode_select:
+                if mode_buttons["PvP"].collidepoint(mx, my):
+                    subprocess.Popen(["python", os.path.join(SCRIPT_DIR, "game.py"), "pvp"])
+                    running = False
+                elif mode_buttons["Play as Runner"].collidepoint(mx, my):
+                    subprocess.Popen(["python", os.path.join(SCRIPT_DIR, "game.py"), "runner"])
+                    running = False
+                elif mode_buttons["Play as Master"].collidepoint(mx, my):
+                    subprocess.Popen(["python", os.path.join(SCRIPT_DIR, "game.py"), "master"])
+                    running = False
+                elif mode_buttons["Back"].collidepoint(mx, my):
+                    mode_select = False
+                    menu = True
 
 pygame.quit()
