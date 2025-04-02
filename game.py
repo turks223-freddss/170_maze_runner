@@ -582,7 +582,26 @@ while running:
                 if skill == "skill_1":
                     player_skill_active = True
                 elif skill == "skill_2":
+                    # Instead of just activating the skill, complete the teleport in one step
                     skill_2_active = True
+                    valid_tiles = get_valid_moves(player_x, player_y, 2)  # Get valid teleport destinations
+                    if valid_tiles and next_pos in valid_tiles:
+                        player_x, player_y = next_pos
+                        skill_2_active = False
+                        skill_2_used = True
+                        player_turns += 1
+                        total_player_steps += 1
+                    else:
+                        # If we can't teleport to the desired position, choose any valid position
+                        if valid_tiles:
+                            player_x, player_y = random.choice(valid_tiles)
+                            skill_2_active = False
+                            skill_2_used = True
+                            player_turns += 1
+                            total_player_steps += 1
+                        else:
+                            # If no valid tiles for teleport, just disable the skill
+                            skill_2_active = False
                 elif skill == "skill_3":
                     skill_3_active = True
             
