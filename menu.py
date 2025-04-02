@@ -65,7 +65,8 @@ help_sections = {
             "Runner starts at (0,0)",
             "Goal: Reach bottom-right corner",
             "Movement is turn-based",
-            "Game ends when runner reaches goal or is trapped"
+            "Game ends when runner reaches goal or is trapped",
+            "Game ends when master occupies 30% of the maze"
         ]
     },
     "Runner Skills": {
