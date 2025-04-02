@@ -562,6 +562,7 @@ while running:
             wall_pos, is_horizontal, skill = master_ai.decide_move(walls_placed)
             
             if skill == "skill_1":
+                
                 maze_skill1_active = True
             
                 pos1 = wall_pos
