@@ -701,41 +701,41 @@ while running:
             
             # Player actions
             if player_turns < 4:
-                # print(player_turns)
-
-                if skill_3_active and (clicked_x, clicked_y) in walls:
-                    walls.remove((clicked_x, clicked_y))
-                    skill_3_active = False
-                    skill_3_used = True
-                    player_turns += 1
-                    total_player_steps += 1
-                    continue
-
-                if skill_2_active:
-                    valid_tiles = get_valid_moves(player_x, player_y, 2)  # Get valid tiles within teleport range
-                    if (clicked_x, clicked_y) in valid_tiles and (clicked_x, clicked_y) not in walls:
-                        player_x, player_y = clicked_x, clicked_y
-                        skill_2_active = False
-                        skill_2_used = True
+                # Only allow player movement if NOT in master mode (playing as Maze Master)
+                if game_mode != "master":
+                    if skill_3_active and (clicked_x, clicked_y) in walls:
+                        walls.remove((clicked_x, clicked_y))
+                        skill_3_active = False
+                        skill_3_used = True
                         player_turns += 1
                         total_player_steps += 1
-                    continue
+                        continue
 
-                if player_skill_active:
-                    if player_turns < 2:
-                        player_skill_active_used = True
-                    valid_moves = get_valid_moves(player_x, player_y, 1)
-                    if (clicked_x, clicked_y) in valid_moves:
-                        player_x, player_y = clicked_x, clicked_y
-                        player_turns += 2
-                        total_player_steps += 1
-                        player_skill_active = False
-                else:
-                    valid_moves = get_valid_moves(player_x, player_y, 1)
-                    if (clicked_x, clicked_y) in valid_moves:
-                        player_x, player_y = clicked_x, clicked_y
-                        player_turns += 1
-                        total_player_steps += 1
+                    if skill_2_active:
+                        valid_tiles = get_valid_moves(player_x, player_y, 2)  # Get valid tiles within teleport range
+                        if (clicked_x, clicked_y) in valid_tiles and (clicked_x, clicked_y) not in walls:
+                            player_x, player_y = clicked_x, clicked_y
+                            skill_2_active = False
+                            skill_2_used = True
+                            player_turns += 1
+                            total_player_steps += 1
+                        continue
+
+                    if player_skill_active:
+                        if player_turns < 2:
+                            player_skill_active_used = True
+                        valid_moves = get_valid_moves(player_x, player_y, 1)
+                        if (clicked_x, clicked_y) in valid_moves:
+                            player_x, player_y = clicked_x, clicked_y
+                            player_turns += 2
+                            total_player_steps += 1
+                            player_skill_active = False
+                    else:
+                        valid_moves = get_valid_moves(player_x, player_y, 1)
+                        if (clicked_x, clicked_y) in valid_moves:
+                            player_x, player_y = clicked_x, clicked_y
+                            player_turns += 1
+                            total_player_steps += 1
             # Maze Master actions
             else:
                 if (clicked_x, clicked_y) == (player_x, player_y) or (clicked_x, clicked_y) == (end_x, end_y):

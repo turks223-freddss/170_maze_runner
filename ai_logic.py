@@ -75,6 +75,78 @@ class MazeRunnerAI:
         # Try to find optimal path
         path = self.a_star_search(self.player_pos, self.end_pos)
         
+        # If no path exists, we're blocked - try to use skills to unblock
+        if not path:
+            # First priority: Use wall break if available
+            if self.skill_3_available:
+                # Find the most strategic wall to break
+                best_wall = None
+                best_path_length = float('inf')
+                best_distance_to_goal = float('inf')
+                
+                # Look for walls adjacent to player that might lead to goal
+                x, y = self.player_pos
+                # Check in all 4 directions
+                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    wall_x, wall_y = x + dx, y + dy
+                    if (wall_x, wall_y) in self.walls:
+                        # Calculate manhattan distance to goal
+                        distance_to_goal = abs(wall_x - self.end_pos[0]) + abs(wall_y - self.end_pos[1])
+                        
+                        # Temporarily remove wall to check if it creates a path
+                        self.walls.remove((wall_x, wall_y))
+                        test_path = self.a_star_search(self.player_pos, self.end_pos)
+                        self.walls.add((wall_x, wall_y))
+                        
+                        if test_path:
+                            # Prioritize walls that create shorter paths and are closer to the goal
+                            path_length = len(test_path)
+                            if path_length < best_path_length or (path_length == best_path_length and distance_to_goal < best_distance_to_goal):
+                                best_wall = (wall_x, wall_y)
+                                best_path_length = path_length
+                                best_distance_to_goal = distance_to_goal
+                
+                if best_wall:
+                    return best_wall, "skill_3", True
+
+            # Second priority: Use teleport if available
+            if self.skill_2_available:
+                # Try to teleport to a position that might lead to better options
+                best_teleport = None
+                best_path_length = float('inf')
+                best_distance_to_goal = float('inf')
+                
+                x, y = self.player_pos
+                for dx in range(-2, 3):
+                    for dy in range(-2, 3):
+                        new_x, new_y = x + dx, y + dy
+                        if (0 <= new_x < self.grid_size and 
+                            0 <= new_y < self.grid_size and 
+                            (new_x, new_y) not in self.walls):
+                            # Calculate manhattan distance to goal
+                            distance_to_goal = abs(new_x - self.end_pos[0]) + abs(new_y - self.end_pos[1])
+                            
+                            test_path = self.a_star_search((new_x, new_y), self.end_pos)
+                            if test_path:
+                                path_length = len(test_path)
+                                if path_length < best_path_length or (path_length == best_path_length and distance_to_goal < best_distance_to_goal):
+                                    best_teleport = (new_x, new_y)
+                                    best_path_length = path_length
+                                    best_distance_to_goal = distance_to_goal
+                
+                if best_teleport:
+                    return best_teleport, "skill_2", True
+
+            # If no skills available or useful, move to any valid adjacent tile
+            # This helps stall for skill cooldowns
+            valid_moves = self.get_valid_moves(self.player_pos)
+            if valid_moves:
+                # Choose the move that gets us closest to the goal
+                best_move = min(valid_moves, 
+                              key=lambda pos: abs(pos[0] - self.end_pos[0]) + abs(pos[1] - self.end_pos[1]))
+                return best_move, "none", False
+            return self.player_pos, "none", False
+
         if not path or len(path) < 2:
             # No path found or already at goal
             return self.player_pos, "none", False
@@ -98,54 +170,6 @@ class MazeRunnerAI:
                 best_move = min(extended_moves, key=lambda pos: path.index(pos))
                 if path.index(best_move) > 1:  # Only use if it gets us further than regular move
                     return best_move, "skill_1", True
-        
-        # Check if teleport (Skill 2) would be beneficial
-        if self.skill_2_available:
-            teleport_options = []
-            x, y = self.player_pos
-            for dx in range(-2, 3):
-                for dy in range(-2, 3):
-                    new_x, new_y = x + dx, y + dy
-                    if (0 <= new_x < self.grid_size and 
-                        0 <= new_y < self.grid_size and 
-                        (new_x, new_y) not in self.walls and
-                        (new_x, new_y) in path):
-                        teleport_options.append((new_x, new_y))
-            
-            if teleport_options:
-                best_teleport = min(teleport_options, key=lambda pos: path.index(pos))
-                if path.index(best_teleport) > 1:  # Only use if it gets us further than regular move
-                    return best_teleport, "skill_2", True
-        
-        # Check if wall break (Skill 3) would be beneficial
-        if self.skill_3_available:
-            # Look for walls blocking the optimal path
-            blocking_walls = set()
-            for i in range(len(path)-1):
-                current = path[i]
-                next_pos = path[i+1]
-                dx = next_pos[0] - current[0]
-                dy = next_pos[1] - current[1]
-                wall_pos = (current[0] + dx, current[1] + dy)
-                if wall_pos in self.walls:
-                    blocking_walls.add(wall_pos)
-            
-            if blocking_walls:
-                # Break the wall that would most improve our path
-                best_wall = None
-                best_path_length = float('inf')
-                for wall in blocking_walls:
-                    # Temporarily remove wall
-                    self.walls.remove(wall)
-                    new_path = self.a_star_search(self.player_pos, self.end_pos)
-                    self.walls.add(wall)
-                    
-                    if new_path and len(new_path) < best_path_length:
-                        best_wall = wall
-                        best_path_length = len(new_path)
-                
-                if best_wall:
-                    return best_wall, "skill_3", True
         
         # Default to next position in optimal path
         return next_pos, "none", False
@@ -260,7 +284,7 @@ class MazeMasterAI:
             pos2, is_horizontal2 = strategic_positions[1]
             return pos1, is_horizontal1, "skill_1"
             
-        # Consider using Skill 2 (Diagonal Walls)
+        # Consider using Skill 2 (Diagonal Walls)I
         if not self.skill_2_used and random.random() < self.difficulty:
             # Find a good position for diagonal wall
             path = self.find_shortest_path(self.player_pos, self.end_pos)
