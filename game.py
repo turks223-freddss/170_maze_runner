@@ -67,7 +67,7 @@ turn_notification_duration = 60  # How long to show the notification (in frames)
 
 # Skill button rects
 def update_button_positions():
-    global skill_1_button, skill_2_button, skill_3_button
+    global skill_1_button, skill_2_button, skill_3_button, reset_button
     button_width = 80
     button_height = 25
     spacing = 10
@@ -75,10 +75,14 @@ def update_button_positions():
     skill_1_button = pygame.Rect(spacing, 10, button_width, button_height)
     skill_2_button = pygame.Rect(spacing + button_width + spacing, 10, button_width, button_height)
     skill_3_button = pygame.Rect(SCREEN_WIDTH - (2 * (button_width + spacing)), 10, button_width, button_height)
+    reset_button = pygame.Rect(SCREEN_WIDTH - (2 * (button_width + spacing)) + 90, 10, button_width, button_height)
 
 update_button_positions()
 
 def draw_buttons():
+    # Reset button
+    pygame.draw.rect(screen, RED, reset_button)
+
     # Player's turn buttons
     if player_turns < 4:
         # Skill 1 button (Extended Move)
@@ -113,8 +117,8 @@ def draw_buttons():
         # Skill 1 button (Double Walls)
         if maze_skill1_active:
             skill_1_color = ACTIVE_SKILL_COLOR
-        elif maze_skill1_cooldown > 0:
-            skill_1_color = GRAY
+        # elif maze_skill1_cooldown > 0:
+        #     skill_1_color = GRAY
         else:
             skill_1_color = BLUE
         pygame.draw.rect(screen, skill_1_color, skill_1_button)
@@ -142,7 +146,7 @@ def draw_buttons():
     screen.blit(font.render("Skill 1", True, WHITE), (skill_1_button.x + 10, skill_1_button.y + 5))
     screen.blit(font.render("Skill 2", True, WHITE), (skill_2_button.x + 10, skill_2_button.y + 5))
     screen.blit(font.render("Skill 3", True, WHITE), (skill_3_button.x + 10, skill_3_button.y + 5))
-    # screen.blit(font.render("Skill 4", True, WHITE), (skill_4_button.x + 10, skill_4_button.y + 5))
+    screen.blit(font.render("Reset", True, WHITE), (reset_button.x + 10, reset_button.y + 5))
     
     # Active skill indicators
     if player_skill_active:
@@ -682,6 +686,11 @@ while running:
             update_button_positions()
         elif event.type == pygame.MOUSEBUTTONDOWN:
             mx, my = pygame.mouse.get_pos()
+
+            # Reset button logic
+            if reset_button.collidepoint(mx, my):
+                reset_game()
+                continue
             
             # Skill button handling
             if skill_1_button.collidepoint(mx, my):
@@ -691,7 +700,7 @@ while running:
                         player_skill_active = True
                 elif player_turns >= 4 and maze_skill1_cooldown == 0:
                     maze_skill1_active = True
-                    maze_skill1_cooldown = 3
+                    maze_skill1_cooldown = 0
                 continue
             
             if skill_2_button.collidepoint(mx, my):
@@ -781,25 +790,36 @@ while running:
                         show_turn_notification = True
                         turn_notification_timer = 0
                         rounds_since_last_skill3 += 1
-                elif maze_skill1_active:
-                    if walls_placed < 2:
-                        if pygame.key.get_pressed()[pygame.K_LSHIFT]:
-                            wall_positions = [(clicked_x, clicked_y + i) for i in range(3)]
-                        else:
-                            wall_positions = [(clicked_x + i, clicked_y) for i in range(3)]
-                        walls_placed += 1
-                    
-                    if all(0 <= wx < GRID_SIZE and 0 <= wy < GRID_SIZE and 
-                        (wx, wy) != (player_x, player_y) and (wx, wy) != (end_x, end_y) and 
-                        (wx, wy) not in walls for wx, wy in wall_positions):
-                        walls.update(wall_positions)
-                        if walls_placed >= 2:
-                            player_turns = 0
-                            walls_placed = 0
+
+                elif maze_skill1_active:   # Skill 1 is activated (Maze master)
+
+                        if walls_placed < 2:    # Required to place 2 walls
+                            if pygame.key.get_pressed()[pygame.K_LSHIFT]:
+                                wall_positions = [(clicked_x, clicked_y + i) for i in range(3)]
+                            else:
+                                wall_positions = [(clicked_x + i, clicked_y) for i in range(3)]
+                            
+                            valid = all(0 <= wx < GRID_SIZE and 0 <= wy < GRID_SIZE and 
+                                        (wx, wy) != (player_x, player_y) and (wx, wy) != (end_x, end_y) and 
+                                        (wx, wy) not in walls for wx, wy in wall_positions)
+                            
+                            if valid:
+                                walls.update(wall_positions)
+                                walls_placed += 1  # Increment only if valid
+                            
+                            # End turn if invalid placement or two walls are placed
+                            if walls_placed >= 2:
+                                player_turns = 0  # End Maze Master's turn
+                                walls_placed = 0  # Reset walls counter
+                                maze_skill1_active = False  # Reset Skill 1 activation
+                                continue
+                        
+                        # Reset Skill 1 activation if no walls were placed
+                        if walls_placed == 0:
                             maze_skill1_active = False
-                            show_turn_notification = True
-                            turn_notification_timer = 0
-                            rounds_since_last_skill3 += 1
+                            walls_placed = 0
+                            player_turns = 0
+                            continue
                 else:
                     if pygame.key.get_pressed()[pygame.K_LSHIFT]:
                         wall_positions = [(clicked_x, clicked_y + i) for i in range(3)]
