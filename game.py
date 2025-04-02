@@ -585,6 +585,16 @@ while running:
                     show_turn_notification = True
                     turn_notification_timer = 0
                     rounds_since_last_skill3 += 1
+                    
+                    # Check if walls cover 50% of the grid
+                    total_tiles = GRID_SIZE * GRID_SIZE
+                    if len(walls) >= total_tiles * 0.3:
+                        game_won = True
+                        draw_turn_text("Maze Master Wins!")
+                        pygame.display.flip()
+                        pygame.time.delay(2000)
+                        reset_game()
+                        continue
         
         elif game_mode == "master" and player_turns < 4:
             # Runner AI's turn
@@ -834,7 +844,17 @@ while running:
                         show_turn_notification = True
                         turn_notification_timer = 0
                         rounds_since_last_skill3 += 1
-
+                        
+                        # Check if walls cover 50% of the grid
+                        total_tiles = GRID_SIZE * GRID_SIZE
+                        if len(walls) >= total_tiles * 0.3:
+                            game_won = True
+                            draw_turn_text("Maze Master Wins!")
+                            pygame.display.flip()
+                            pygame.time.delay(2000)
+                            reset_game()
+                            continue
+                        
                 # Update cooldowns
                 if maze_skill1_cooldown > 0:
                     maze_skill1_cooldown -= 1
