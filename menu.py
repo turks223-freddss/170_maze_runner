@@ -60,7 +60,6 @@ max_scroll_offset = 0
 # Help sections with icons and colors
 help_sections = {
     "Basics": {
-        "icon": "🎮",
         "color": BLUE,
         "content": [
             "Runner starts at (0,0)",
@@ -70,7 +69,6 @@ help_sections = {
         ]
     },
     "Runner Skills": {
-        "icon": "⚡",
         "color": (0, 150, 0),
         "content": [
             "Sprint: Move up to 4 tiles (2 turns)",
@@ -79,7 +77,6 @@ help_sections = {
         ]
     },
     "Master Skills": {
-        "icon": "🏰",
         "color": (150, 0, 0),
         "content": [
             "Double Wall: Place 2 walls in 1 turn",
@@ -141,10 +138,10 @@ def draw_help():
         
         # Only draw if section is in view
         if y_pos + section_height > 60 and y_pos < SCREEN_HEIGHT:
-            # Section header with icon
+            # Section header
             section_bg = pygame.Rect(20, y_pos, SCREEN_WIDTH - 40, 40)
             pygame.draw.rect(screen, data["color"], section_bg, border_radius=10)
-            draw_text(f"{data['icon']} {section}", section_font, WHITE, SCREEN_WIDTH // 2, y_pos + 5)
+            draw_text(section, section_font, WHITE, SCREEN_WIDTH // 2, y_pos + 5)
             
             # Content box
             content_bg = pygame.Rect(30, y_pos + 45, SCREEN_WIDTH - 60, len(data["content"]) * 30 + 10)
@@ -159,13 +156,6 @@ def draw_help():
     # Update max scroll offset
     global max_scroll_offset
     max_scroll_offset = max(0, total_height - visible_height)
-    
-    # Draw scroll indicators if needed
-    if max_scroll_offset > 0:
-        if scroll_offset > 0:
-            draw_text("▲", font, DARK_BLUE, SCREEN_WIDTH - 30, 70)
-        if scroll_offset < max_scroll_offset:
-            draw_text("▼", font, DARK_BLUE, SCREEN_WIDTH - 30, SCREEN_HEIGHT - 30)
 
 def handle_scrolling(event):
     """Handles scrolling input with improved boundaries"""
