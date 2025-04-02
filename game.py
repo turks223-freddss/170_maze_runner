@@ -598,7 +598,7 @@ while running:
         
         elif game_mode == "master" and player_turns < 4:
             # Runner AI's turn
-            runner_ai.update_state(walls, (player_x, player_y))
+            runner_ai.update_state(walls, (player_x, player_y), rounds_since_last_skill3)
             next_pos, skill, use_skill = runner_ai.decide_move()
             
             if use_skill:
@@ -625,8 +625,16 @@ while running:
                         else:
                             # If no valid tiles for teleport, just disable the skill
                             skill_2_active = False
-                elif skill == "skill_3":
-                    skill_3_active = True
+                elif skill == "skill_3" and skill_3_available and not skill_3_used:
+                    # Execute wall break immediately when AI decides to use it
+                    if next_pos in walls:  # next_pos contains the wall position to break
+                        walls.remove(next_pos)
+                        skill_3_used = True
+                        skill_3_active = False
+                        player_turns += 1
+                        total_player_steps += 1
+                        rounds_since_last_skill3 = 0  # Reset the counter after using skill 3
+                        print(f"AI broke wall at position {next_pos}")  # Debug message
             
             if not any([player_skill_active, skill_2_active, skill_3_active]):
                 # Move to AI's decided position

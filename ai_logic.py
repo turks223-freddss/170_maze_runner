@@ -12,12 +12,22 @@ class MazeRunnerAI:
         self.skill_1_available = True
         self.skill_2_available = True
         self.skill_3_available = False
+        self.rounds_since_skill3 = 0
         self.total_steps = 0
 
-    def update_state(self, walls: Set[Tuple[int, int]], player_pos: Tuple[int, int]):
+    def update_state(self, walls: Set[Tuple[int, int]], player_pos: Tuple[int, int], rounds_since_last_skill3: int = None):
         """Update the AI's knowledge of the game state"""
         self.walls = walls
         self.player_pos = player_pos
+        
+        # Update skill 3 availability based on rounds
+        if rounds_since_last_skill3 is not None:
+            self.rounds_since_skill3 = rounds_since_last_skill3
+            self.skill_3_available = rounds_since_last_skill3 >= 4
+        
+        # Other skills are always available when not used
+        self.skill_2_available = True
+        self.skill_1_available = True
         
     def get_valid_moves(self, pos: Tuple[int, int], max_distance: int = 1) -> List[Tuple[int, int]]:
         """Get all valid moves from current position"""
@@ -84,27 +94,23 @@ class MazeRunnerAI:
                 best_path_length = float('inf')
                 best_distance_to_goal = float('inf')
                 
-                # Look for walls adjacent to player that might lead to goal
-                x, y = self.player_pos
-                # Check in all 4 directions
-                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                    wall_x, wall_y = x + dx, y + dy
-                    if (wall_x, wall_y) in self.walls:
-                        # Calculate manhattan distance to goal
-                        distance_to_goal = abs(wall_x - self.end_pos[0]) + abs(wall_y - self.end_pos[1])
-                        
-                        # Temporarily remove wall to check if it creates a path
-                        self.walls.remove((wall_x, wall_y))
-                        test_path = self.a_star_search(self.player_pos, self.end_pos)
-                        self.walls.add((wall_x, wall_y))
-                        
-                        if test_path:
-                            # Prioritize walls that create shorter paths and are closer to the goal
-                            path_length = len(test_path)
-                            if path_length < best_path_length or (path_length == best_path_length and distance_to_goal < best_distance_to_goal):
-                                best_wall = (wall_x, wall_y)
-                                best_path_length = path_length
-                                best_distance_to_goal = distance_to_goal
+                # Look for walls that might be blocking the path
+                for wall in self.walls:
+                    # Calculate manhattan distance to goal
+                    distance_to_goal = abs(wall[0] - self.end_pos[0]) + abs(wall[1] - self.end_pos[1])
+                    
+                    # Temporarily remove wall to check if it creates a path
+                    self.walls.remove(wall)
+                    test_path = self.a_star_search(self.player_pos, self.end_pos)
+                    self.walls.add(wall)
+                    
+                    if test_path:
+                        # Prioritize walls that create shorter paths and are closer to the goal
+                        path_length = len(test_path)
+                        if path_length < best_path_length or (path_length == best_path_length and distance_to_goal < best_distance_to_goal):
+                            best_wall = wall
+                            best_path_length = path_length
+                            best_distance_to_goal = distance_to_goal
                 
                 if best_wall:
                     return best_wall, "skill_3", True
