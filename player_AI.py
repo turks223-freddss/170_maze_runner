@@ -55,10 +55,41 @@ class PlayerAI:
 
         return None  # No path found
 
+    def farthest_move(self):
+        """Find the farthest valid move from the player's position."""
+        farthest_distance = -1  # Start with a very small distance
+        farthest_moves = []
+
+        # Loop through all valid moves
+        for dx, dy in self.valid_moves:
+            # Calculate the new position
+            new_x = self.player_pos_x + dx
+            new_y = self.player_pos_y + dy
+            
+            # Calculate Manhattan distance
+            distance = abs(new_x - self.player_pos_x) + abs(new_y - self.player_pos_y)
+            
+            # If this is the farthest distance found, update
+            if distance > farthest_distance:
+                farthest_distance = distance
+                farthest_moves = [(dx, dy)]  # Reset to only this farthest move
+            elif distance == farthest_distance:
+                farthest_moves.append((dx, dy))  # Add this move if it equals the farthest distance
+
+        return farthest_moves
+    
     def move(self):
-        """Move along the shortest path using A*."""
+        #Move along the shortest path using A*.
         path = self.a_star_search()
         if path and len(path) > 1:
-            self.player_pos_x, self.player_pos_y = path[1]  # Move to the next step in path
+            moves = self.farthest_move()
+            for x in moves:
+                if x in path:
+                    self.player_pos_x,self.player_pos_y = x
+            if moves not in path:
+               self.player_pos_x,self.player_pos_y = moves[0]
+            
         
+        print(path,"shortes path")
+        print(moves,"farthes move")
         return (self.player_pos_x, self.player_pos_y)  # Return new position

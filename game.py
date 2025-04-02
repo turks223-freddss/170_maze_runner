@@ -52,7 +52,9 @@ MAZE_SKILL_3_COOLDOWN_MAX = 3  # Number of turns before skill can be used again
 game_won = False  # Flag to track if the player has won
 maze_skill2_active = False  # Tracks if Maze Master's diagonal wall skill is active
 maze_skill2_used = False    # Tracks if diagonal wall skill has been used
+#AI NEW
 player_AI = True  # Toggle AI on or off new
+Skill_1_counter_AI = 0
 
 # Track game progress for skill 3 availability
 total_player_steps = 0
@@ -639,13 +641,26 @@ while running:
                 # print(player_turns)
                 
                 if player_AI:
-                    valid_moves = get_valid_moves(player_x, player_y, 1)
+                    print(player_turns)
+                    print (Skill_1_counter_AI)
+                   
+                    if Skill_1_counter_AI >0:
+                        Skill_1_counter_AI = Skill_1_counter_AI-1
+                        player_skill_active=False
+                        
+                    if Skill_1_counter_AI == 0 and player_turns<3:
+                        player_skill_active = True
+                        valid_moves = get_valid_moves(player_x, player_y, 1)
+                        Skill_1_counter_AI = 2
+                        player_turns+=2
+                    else:
+                        valid_moves = get_valid_moves(player_x, player_y, 1)
+                        player_turns+=1 
+                    
                     AI = PlayerAI(valid_moves,player_x,player_y,walls)
                     player_x, player_y = AI.move()
-                    print("true")
-                    print(AI.move())
-                    print(clicked_x,clicked_y)
-                    player_turns+=1
+                    print("move:",AI.move())
+                    print (valid_moves)
                     continue
 
                 if skill_3_active and (clicked_x, clicked_y) in walls:
