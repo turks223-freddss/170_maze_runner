@@ -189,9 +189,11 @@ def is_valid_diagonal_wall_position(x, y, direction):
               for wx, wy in wall_positions), wall_positions
 
 
-def draw_turn_text():
-    # Determine the current turn
-    if game_won:
+def draw_turn_text(custom_message=None):
+    # Determine the current turn or show a custom message
+    if custom_message:
+        turn_text = custom_message
+    elif game_won:
         turn_text = "Congratulations!"
     else:
         turn_text = "Player's Turn" if player_turns < 4 else "Maze Master's Turn"
@@ -206,7 +208,7 @@ def draw_turn_text():
     # Draw the text
     screen.blit(base_text, (x_pos, y_pos))
     
-    # Add active skill info
+    # Add active skill info (Player)
     if player_skill_active or skill_2_active or skill_3_active:
         active_skill = ""
         active_color = ACTIVE_SKILL_COLOR
@@ -225,11 +227,8 @@ def draw_turn_text():
 
     # Add active skill info (Maze Master)
     if maze_skill1_active:
-        active_skill = ""
+        active_skill = "Double Walls"
         active_color = ACTIVE_SKILL_COLOR
-        
-        if maze_skill1_active:
-            active_skill = "Double Walls"
 
         skill_info = small_font.render(f"{active_skill} Active", True, active_color)
         x_pos = SCREEN_WIDTH // 2 - skill_info.get_width() // 2
@@ -465,8 +464,10 @@ def reset_game():
     global player_x, player_y, walls, player_turns, player_skill_active, skill_2_active, skill_2_used
     global show_turn_notification, turn_notification_timer, skill_3_active, skill_3_used, skill_3_available
     global total_player_steps, rounds_since_last_skill3, maze_skill_3_active, maze_skill_3_cooldown
-    global maze_skill2_active, maze_skill2_used, player_skill_active_used
-    
+    global maze_skill2_active, maze_skill2_used, player_skill_active_used, game_won
+    global runner_ai, master_ai, game_mode
+
+    # Reset player position and skills
     player_x, player_y = 0, 0
     walls.clear()
     player_turns = 0
@@ -485,10 +486,18 @@ def reset_game():
     maze_skill_3_cooldown = 0
     maze_skill2_active = False
     maze_skill2_used = False
-    
+
+    # Re-initialize AI objects based on game mode
+    if game_mode == "runner":
+        master_ai = MazeMasterAI(GRID_SIZE)
+    elif game_mode == "master":
+        runner_ai = MazeRunnerAI(GRID_SIZE)
+
     # Show turn notification after reset
     show_turn_notification = True
     turn_notification_timer = 0
+
+    print("Game has been reset successfully.")  # Debug message to verify reset
 
 # Show turn notification at game start
 show_turn_notification = True
@@ -615,19 +624,20 @@ while running:
     # Check if the player has reached the goal
     if player_x == end_x and player_y == end_y:
         game_won = True
+        if game_mode == "runner":
+            draw_turn_text("Congratulations!")  # Show "Congratulations!" for runner
+        elif game_mode == "master":
+            draw_turn_text("You Lose!")  # Show "You Lose!" for master
+        pygame.display.flip()
+        pygame.time.delay(2000)  # Display message for 2 seconds
+        reset_game()
+        continue  # Restart the loop after resetting
     
     # Check if Skill 3 should become available (after 4 moves total and every 4 moves thereafter)
     if rounds_since_last_skill3 >= 4 and (skill_3_used or not skill_3_available):
         skill_3_available = True
         skill_3_used = False
         rounds_since_last_skill3 = 0
-
-    if game_won:
-        draw_turn_text()  # Show "Congratulations!"
-        pygame.display.flip()
-        pygame.time.delay(2000)  # Display message for 2 seconds
-        reset_game()
-        continue  # Restart the loop after resetting
 
     # Draw the grid
     for x in range(0, SCREEN_WIDTH, TILE_SIZE):
