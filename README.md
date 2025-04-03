@@ -1,5 +1,13 @@
 # Endless Laibyrinth (Turn-Based Maze Game)
 
+## Members
+1. **Carl Lawrence Banuag**
+2. **Marfred James Deen**
+3. **Jilliane May Ferolino**
+4. **Andrea Pauline Rodriguez**
+5. **Jeric Ashley Rulete**
+6. **John Angelo Torres**
+
 ## Overview
 **Endless Laibyrinth** is a strategic puzzle game where players navigate a grid-based maze, overcoming obstacles and utilizing special skills to reach the goal. The game alternates turns between the "Runner" and the "Maze Master."
 

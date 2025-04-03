@@ -1,3 +1,13 @@
+# A3 Game with AI
+
+# Members:
+# Banuag, Carl
+# Deen, Marfred
+# Ferolino, Jilliane
+# Rodriguez, Andrea
+# Rulete, Jeric
+# Torres, John Angelo
+
 import pygame
 import subprocess
 import textwrap
