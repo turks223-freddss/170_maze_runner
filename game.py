@@ -11,6 +11,7 @@
 import pygame
 import random
 import sys
+import time
 from ai_logic import MazeRunnerAI, MazeMasterAI
 
 # Constants
@@ -18,6 +19,8 @@ GRID_SIZE = 24
 TILE_SIZE = 25
 SCREEN_WIDTH = GRID_SIZE * TILE_SIZE
 SCREEN_HEIGHT = GRID_SIZE * TILE_SIZE + 50
+MAX_AI_THINKING_TIME = 0.5  # Maximum time in seconds for AI to think
+AI_THINKING_DEPTH = 3  # Depth for minimax search
 
 # Colors
 WHITE = (255, 255, 255)
@@ -515,6 +518,7 @@ def reset_game():
     # Re-initialize AI objects based on game mode
     if game_mode == "runner":
         master_ai = MazeMasterAI(GRID_SIZE)
+        master_ai.max_depth = AI_THINKING_DEPTH  # Set the minimax depth
     elif game_mode == "master":
         runner_ai = MazeRunnerAI(GRID_SIZE)
 
@@ -563,6 +567,7 @@ runner_ai = None
 master_ai = None
 if game_mode == "runner":
     master_ai = MazeMasterAI(GRID_SIZE)
+    master_ai.max_depth = AI_THINKING_DEPTH  # Set the minimax depth
 elif game_mode == "master":
     runner_ai = MazeRunnerAI(GRID_SIZE)
 
@@ -580,12 +585,18 @@ while running:
         if game_mode == "runner" and player_turns >= 4:
             # Maze Master AI's turn
             master_ai.update_state(walls, (player_x, player_y), total_player_steps)
+            
+            # Get AI move with time limit
+            start_time = time.time()
             wall_pos, is_horizontal, skill = master_ai.decide_move(walls_placed)
+            thinking_time = time.time() - start_time
+            
+            # If AI took too long, reduce depth for next time
+            if thinking_time > MAX_AI_THINKING_TIME:
+                master_ai.max_depth = max(1, master_ai.max_depth - 1)
             
             if skill == "skill_1":
-                
                 maze_skill1_active = True
-            
                 pos1 = wall_pos
                 is_horizontal1 = is_horizontal
 
@@ -610,13 +621,11 @@ while running:
                     master_ai.skill_1_cooldown = 3
                     maze_skill1_active = False
 
-
                 show_turn_notification = True
                 turn_notification_timer = 0
                 rounds_since_last_skill3 += 1
                 
             elif skill == "skill_2":
-                
                 maze_skill2_active = True
                 maze_skill2_used = True
                 direction = "urdl" if pygame.key.get_pressed()[pygame.K_LSHIFT] else "uldr"
@@ -650,7 +659,7 @@ while running:
                     turn_notification_timer = 0
                     rounds_since_last_skill3 += 1
                     
-                    # Check if walls cover 50% of the grid
+                    # Check if walls cover 30% of the grid
                     total_tiles = GRID_SIZE * GRID_SIZE
                     if len(walls) >= total_tiles * 0.3:
                         game_won = True
