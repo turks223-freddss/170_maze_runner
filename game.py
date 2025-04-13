@@ -917,20 +917,16 @@ while running:
                             player_turns = 0
                             continue
                 else:
-                    if pygame.key.get_pressed()[pygame.K_LSHIFT]:
-                        wall_positions = [(clicked_x, clicked_y + i) for i in range(3)]
-                    else:
-                        wall_positions = [(clicked_x + i, clicked_y) for i in range(3)]
-                    
-                    if all(0 <= wx < GRID_SIZE and 0 <= wy < GRID_SIZE and 
-                        (wx, wy) != (player_x, player_y) and (wx, wy) != (end_x, end_y) and 
-                        (wx, wy) not in walls for wx, wy in wall_positions):
+                    is_horizontal = not pygame.key.get_pressed()[pygame.K_LSHIFT]
+
+                    if is_valid_wall_position(clicked_x, clicked_y, is_horizontal):
+                        wall_positions = [(clicked_x + i, clicked_y) for i in range(3)] if is_horizontal else [(clicked_x, clicked_y + i) for i in range(3)]
                         walls.update(wall_positions)
                         player_turns = 0
                         show_turn_notification = True
                         turn_notification_timer = 0
                         rounds_since_last_skill3 += 1
-                        
+
                         # Check if walls cover 50% of the grid
                         total_tiles = GRID_SIZE * GRID_SIZE
                         if len(walls) >= total_tiles * 0.3:
