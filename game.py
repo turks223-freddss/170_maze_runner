@@ -344,14 +344,25 @@ def is_valid_wall_position(x, y, is_horizontal):
         wall_positions = [(x + i, y) for i in range(3)]
     else:
         wall_positions = [(x, y + i) for i in range(3)]
-    
-    # Check if all positions are valid
-    valid = all(0 <= wx < GRID_SIZE and 0 <= wy < GRID_SIZE and 
-               (wx, wy) != (player_x, player_y) and 
-               (wx, wy) != (end_x, end_y) and
-               (wx, wy) not in walls
-               for wx, wy in wall_positions)
-    
+
+    # Define a protected area around the endpoint
+    protected_area = {
+        (px, py)
+        for px in range(end_x - 6, end_x + 6)
+        for py in range(end_y - 6, end_y + 6)
+        if 0 <= px < GRID_SIZE and 0 <= py < GRID_SIZE
+    }
+
+    valid = all(
+        0 <= wx < GRID_SIZE and
+        0 <= wy < GRID_SIZE and
+        (wx, wy) != (player_x, player_y) and
+        (wx, wy) != (end_x, end_y) and
+        (wx, wy) not in walls and
+        (wx, wy) not in protected_area
+        for wx, wy in wall_positions
+    )
+
     return valid
 
 def highlight_clickable_areas():
