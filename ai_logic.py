@@ -202,6 +202,7 @@ class MazeMasterAI:
         self.difficulty = 0.5  # 0.0 to 1.0, adjusts based on player performance
         self.max_depth = 2  # Reduced depth for better performance
         self.move_cache = {}  # Cache for storing evaluated positions
+        self.last_move = None  # Track last move to prevent infinite loops
 
     def update_state(self, walls: Set[Tuple[int, int]], player_pos: Tuple[int, int], player_steps: int):
         """Update the AI's knowledge of the game state and adjust difficulty"""
@@ -347,8 +348,38 @@ class MazeMasterAI:
             # Get strategic positions instead of trying all possible positions
             wall_positions = self.get_strategic_wall_positions()[:5]  # Limit to top 5 positions
             
+            # Try all available skills first
+            if skill_1_available and len(wall_positions) >= 2:
+                pos1, is_horizontal1 = wall_positions[0]
+                eval_score, _ = self.minimax(depth - 1, alpha, beta, False, player_pos, walls, 
+                                           False, skill_2_available, skill_3_available)
+                if eval_score > max_eval:
+                    max_eval = eval_score
+                    best_move = (pos1, is_horizontal1, "skill_1")
+                alpha = max(alpha, eval_score)
+            
+            if skill_2_available and not self.skill_2_used:
+                path = self.find_shortest_path(player_pos, self.end_pos)
+                if path and len(path) > 2:
+                    mid_point = path[len(path)//2]
+                    if 0 <= mid_point[0] < self.grid_size-2 and 0 <= mid_point[1] < self.grid_size-2:
+                        eval_score, _ = self.minimax(depth - 1, alpha, beta, False, player_pos, walls, 
+                                                   skill_1_available, False, skill_3_available)
+                        if eval_score > max_eval:
+                            max_eval = eval_score
+                            best_move = (mid_point, True, "skill_2")
+                        alpha = max(alpha, eval_score)
+            
+            if skill_3_available and self.skill_3_cooldown == 0:
+                eval_score, _ = self.minimax(depth - 1, alpha, beta, False, player_pos, walls, 
+                                           skill_1_available, skill_2_available, False)
+                if eval_score > max_eval:
+                    max_eval = eval_score
+                    best_move = ((0, 0), False, "skill_3")
+                alpha = max(alpha, eval_score)
+            
+            # Try regular wall placements
             for wall_pos, is_horizontal in wall_positions:
-                # Create new wall set with the new wall
                 new_walls = walls.copy()
                 if is_horizontal:
                     wall_tiles = [(wall_pos[0] + i, wall_pos[1]) for i in range(3)]
@@ -358,30 +389,17 @@ class MazeMasterAI:
                 if all(0 <= wx < self.grid_size and 0 <= wy < self.grid_size and 
                       (wx, wy) not in walls for wx, wy in wall_tiles):
                     new_walls.update(wall_tiles)
+                    eval_score, _ = self.minimax(depth - 1, alpha, beta, False, player_pos, new_walls, 
+                                               skill_1_available, skill_2_available, skill_3_available)
                     
-                    # Only try skills if they're available and would be useful
-                    skills_to_try = ["none"]
-                    if skill_1_available and len(wall_positions) >= 2:
-                        skills_to_try.append("skill_1")
-                    if skill_2_available and not self.skill_2_used:
-                        skills_to_try.append("skill_2")
-                    if skill_3_available and self.skill_3_cooldown == 0:
-                        skills_to_try.append("skill_3")
+                    if eval_score > max_eval:
+                        max_eval = eval_score
+                        best_move = (wall_pos, is_horizontal, "none")
+                    
+                    alpha = max(alpha, eval_score)
+                    if beta <= alpha:
+                        break
                         
-                    for skill in skills_to_try:
-                        eval_score, _ = self.minimax(depth - 1, alpha, beta, False, player_pos, new_walls, 
-                                                   skill_1_available and skill != "skill_1",
-                                                   skill_2_available and skill != "skill_2",
-                                                   skill_3_available and skill != "skill_3")
-                        
-                        if eval_score > max_eval:
-                            max_eval = eval_score
-                            best_move = (wall_pos, is_horizontal, skill)
-                        
-                        alpha = max(alpha, eval_score)
-                        if beta <= alpha:
-                            break
-                            
             return max_eval, best_move
             
         else:  # Runner's turn
@@ -414,7 +432,7 @@ class MazeMasterAI:
         self.move_cache.clear()
         
         try:
-            # First try minimax with alpha-beta pruning with a timeout
+            # First try minimax with alpha-beta pruning
             _, minimax_move = self.minimax(
                 self.max_depth, float('-inf'), float('inf'), True,
                 self.player_pos, self.walls,
@@ -424,10 +442,20 @@ class MazeMasterAI:
             )
             
             if minimax_move:
+                # Prevent infinite loops by checking if this move is the same as last move
+                if self.last_move and self.last_move == minimax_move:
+                    # If same move, try a different strategy
+                    strategic_positions = self.get_strategic_wall_positions()
+                    if strategic_positions:
+                        pos, is_horizontal = random.choice(strategic_positions)
+                        self.last_move = (pos, is_horizontal, "none")
+                        return self.last_move
+                
+                self.last_move = minimax_move
                 return minimax_move
-        except Exception:
-            # If minimax fails, fall back to original strategy
-            pass
+                
+        except Exception as e:
+            print(f"Minimax error: {e}")  # Log the error for debugging
             
         # Fall back to original strategy
         strategic_positions = self.get_strategic_wall_positions()
@@ -437,7 +465,8 @@ class MazeMasterAI:
         # Rest of the original strategy remains unchanged
         if self.skill_1_cooldown == 0 and len(strategic_positions) >= 2 and random.random() < self.difficulty:
             pos1, is_horizontal1 = strategic_positions[0]
-            return pos1, is_horizontal1, "skill_1"
+            self.last_move = (pos1, is_horizontal1, "skill_1")
+            return self.last_move
             
         if not self.skill_2_used and random.random() < self.difficulty:
             path = self.find_shortest_path(self.player_pos, self.end_pos)
@@ -445,15 +474,18 @@ class MazeMasterAI:
                 mid_point = path[len(path)//2]
                 if 0 <= mid_point[0] < self.grid_size-2 and 0 <= mid_point[1] < self.grid_size-2:
                     self.skill_2_used = True
-                    return mid_point, True, "skill_2"
+                    self.last_move = (mid_point, True, "skill_2")
+                    return self.last_move
         
         if self.skill_3_cooldown == 0 and random.random() < self.difficulty:
             path = self.find_shortest_path(self.player_pos, self.end_pos)
             if path and len(path) < self.grid_size // 2:
-                return (0, 0), False, "skill_3"
+                self.last_move = ((0, 0), False, "skill_3")
+                return self.last_move
         
         pos, is_horizontal = random.choice(strategic_positions)
-        return pos, is_horizontal, "none"
+        self.last_move = (pos, is_horizontal, "none")
+        return self.last_move
 
     def get_valid_moves(self, pos: Tuple[int, int], max_distance: int = 1) -> List[Tuple[int, int]]:
         """Get all valid moves from current position"""
