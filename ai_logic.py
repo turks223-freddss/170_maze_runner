@@ -200,6 +200,8 @@ class MazeMasterAI:
         self.skill_2_used = False
         self.skill_3_cooldown = 0
         self.difficulty = 0.5  # 0.0 to 1.0, adjusts based on player performance
+        self.max_depth = 2  # Reduced depth for better performance
+        self.move_cache = {}  # Cache for storing evaluated positions
 
     def update_state(self, walls: Set[Tuple[int, int]], player_pos: Tuple[int, int], player_steps: int):
         """Update the AI's knowledge of the game state and adjust difficulty"""
@@ -288,36 +290,182 @@ class MazeMasterAI:
         
         return positions
 
-    def decide_move(self, walls_placed:int) -> Tuple[Tuple[int, int], bool, str]:
+    def evaluate_position(self, player_pos: Tuple[int, int], walls: Set[Tuple[int, int]]) -> float:
+        """Evaluate the current game position from Maze Master's perspective"""
+        # Cache key for this position
+        cache_key = (player_pos, frozenset(walls))
+        if cache_key in self.move_cache:
+            return self.move_cache[cache_key]
+            
+        # Find shortest path for player
+        player_path = self.find_shortest_path(player_pos, self.end_pos)
+        
+        if not player_path:
+            self.move_cache[cache_key] = float('inf')
+            return float('inf')  # Player is trapped, best case for Maze Master
+            
+        # Calculate score based on path length and wall coverage
+        path_length = len(player_path)
+        wall_coverage = len(walls) / (self.grid_size * self.grid_size)
+        
+        # Calculate distance from player to nearest wall
+        min_wall_distance = float('inf')
+        for wall in walls:
+            dist = abs(wall[0] - player_pos[0]) + abs(wall[1] - player_pos[1])
+            min_wall_distance = min(min_wall_distance, dist)
+        
+        if min_wall_distance == float('inf'):
+            min_wall_distance = 0
+            
+        # Score components:
+        # 1. Path length (longer is better for Maze Master)
+        # 2. Wall coverage (more walls is better)
+        # 3. Proximity to walls (closer walls are better)
+        score = (path_length * 10 + 
+                wall_coverage * 100 + 
+                (1.0 / (min_wall_distance + 1)) * 50)
+                
+        self.move_cache[cache_key] = score
+        return score
+
+    def minimax(self, depth: int, alpha: float, beta: float, is_maximizing: bool, 
+                player_pos: Tuple[int, int], walls: Set[Tuple[int, int]], 
+                skill_1_available: bool, skill_2_available: bool, skill_3_available: bool) -> Tuple[float, Optional[Tuple[Tuple[int, int], bool, str]]]:
+        """Minimax algorithm with alpha-beta pruning and optimizations"""
+        # Early termination checks
+        if depth == 0:
+            return self.evaluate_position(player_pos, walls), None
+            
+        current_eval = self.evaluate_position(player_pos, walls)
+        if current_eval == float('inf') or player_pos == self.end_pos:
+            return current_eval, None
+
+        if is_maximizing:  # Maze Master's turn
+            max_eval = float('-inf')
+            best_move = None
+            
+            # Get strategic positions instead of trying all possible positions
+            wall_positions = self.get_strategic_wall_positions()[:5]  # Limit to top 5 positions
+            
+            for wall_pos, is_horizontal in wall_positions:
+                # Create new wall set with the new wall
+                new_walls = walls.copy()
+                if is_horizontal:
+                    wall_tiles = [(wall_pos[0] + i, wall_pos[1]) for i in range(3)]
+                else:
+                    wall_tiles = [(wall_pos[0], wall_pos[1] + i) for i in range(3)]
+                    
+                if all(0 <= wx < self.grid_size and 0 <= wy < self.grid_size and 
+                      (wx, wy) not in walls for wx, wy in wall_tiles):
+                    new_walls.update(wall_tiles)
+                    
+                    # Only try skills if they're available and would be useful
+                    skills_to_try = ["none"]
+                    if skill_1_available and len(wall_positions) >= 2:
+                        skills_to_try.append("skill_1")
+                    if skill_2_available and not self.skill_2_used:
+                        skills_to_try.append("skill_2")
+                    if skill_3_available and self.skill_3_cooldown == 0:
+                        skills_to_try.append("skill_3")
+                        
+                    for skill in skills_to_try:
+                        eval_score, _ = self.minimax(depth - 1, alpha, beta, False, player_pos, new_walls, 
+                                                   skill_1_available and skill != "skill_1",
+                                                   skill_2_available and skill != "skill_2",
+                                                   skill_3_available and skill != "skill_3")
+                        
+                        if eval_score > max_eval:
+                            max_eval = eval_score
+                            best_move = (wall_pos, is_horizontal, skill)
+                        
+                        alpha = max(alpha, eval_score)
+                        if beta <= alpha:
+                            break
+                            
+            return max_eval, best_move
+            
+        else:  # Runner's turn
+            min_eval = float('inf')
+            best_move = None
+            
+            # Get valid moves for runner
+            valid_moves = self.get_valid_moves(player_pos)
+            
+            # Sort moves by distance to goal to check most promising moves first
+            valid_moves.sort(key=lambda pos: abs(pos[0] - self.end_pos[0]) + abs(pos[1] - self.end_pos[1]))
+            
+            for move in valid_moves[:4]:  # Limit to 4 best moves for performance
+                eval_score, _ = self.minimax(depth - 1, alpha, beta, True, move, walls, 
+                                           skill_1_available, skill_2_available, skill_3_available)
+                
+                if eval_score < min_eval:
+                    min_eval = eval_score
+                    best_move = move
+                
+                beta = min(beta, eval_score)
+                if beta <= alpha:
+                    break
+                    
+            return min_eval, best_move
+
+    def decide_move(self, walls_placed: int) -> Tuple[Tuple[int, int], bool, str]:
         """Decide the next wall placement and whether to use a skill"""
+        # Clear the move cache before each decision
+        self.move_cache.clear()
+        
+        try:
+            # First try minimax with alpha-beta pruning with a timeout
+            _, minimax_move = self.minimax(
+                self.max_depth, float('-inf'), float('inf'), True,
+                self.player_pos, self.walls,
+                self.skill_1_cooldown == 0,
+                not self.skill_2_used,
+                self.skill_3_cooldown == 0
+            )
+            
+            if minimax_move:
+                return minimax_move
+        except Exception:
+            # If minimax fails, fall back to original strategy
+            pass
+            
+        # Fall back to original strategy
         strategic_positions = self.get_strategic_wall_positions()
         if not strategic_positions:
-            return (0, 0), False, "none"  # No valid moves
+            return (0, 0), False, "none"
             
-        # Consider using Skill 1 (Double Walls)
+        # Rest of the original strategy remains unchanged
         if self.skill_1_cooldown == 0 and len(strategic_positions) >= 2 and random.random() < self.difficulty:
             pos1, is_horizontal1 = strategic_positions[0]
             return pos1, is_horizontal1, "skill_1"
             
-        # Consider using Skill 2 (Diagonal Walls)I
         if not self.skill_2_used and random.random() < self.difficulty:
-            # print("hi")
-            # Find a good position for diagonal wall
             path = self.find_shortest_path(self.player_pos, self.end_pos)
             if path and len(path) > 2:
                 mid_point = path[len(path)//2]
                 if 0 <= mid_point[0] < self.grid_size-2 and 0 <= mid_point[1] < self.grid_size-2:
-                    self.skill_2_used=True
+                    self.skill_2_used = True
                     return mid_point, True, "skill_2"
-            
         
-        # Consider using Skill 3 (Teleport Player)
         if self.skill_3_cooldown == 0 and random.random() < self.difficulty:
-            # Only use if player is close to the goal
             path = self.find_shortest_path(self.player_pos, self.end_pos)
             if path and len(path) < self.grid_size // 2:
                 return (0, 0), False, "skill_3"
         
-        # Default to regular wall placement
         pos, is_horizontal = random.choice(strategic_positions)
-        return pos, is_horizontal, "none" 
+        return pos, is_horizontal, "none"
+
+    def get_valid_moves(self, pos: Tuple[int, int], max_distance: int = 1) -> List[Tuple[int, int]]:
+        """Get all valid moves from current position"""
+        x, y = pos
+        valid_tiles = []
+        
+        # Regular movement (up, down, left, right)
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            new_x, new_y = x + dx, y + dy
+            if (0 <= new_x < self.grid_size and 
+                0 <= new_y < self.grid_size and 
+                (new_x, new_y) not in self.walls):
+                valid_tiles.append((new_x, new_y))
+                
+        return valid_tiles 
